@@ -1,0 +1,2053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOT Coordinate Converter : WGS84 - Indian 1975 47N</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: #f5f6fa;
+            color: #333;
+        }
+        .header {
+            background-color: #fff;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            color: #2c3e50;
+        }
+        .header p {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #34495e;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 15px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 8px;
+            text-align: right;
+            font-size: 13px;
+        }
+        th {
+            background-color: #34495e;
+            color: #fff;
+            text-align: center;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f3f5;
+        }
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            text-align: right;
+            border: none;
+            background: transparent;
+            font-size: 13px;
+        }
+        button, select {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #3498db;
+            color: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background-color 0.2s;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+        button:hover, select:hover {
+            background-color: #2980b9;
+        }
+        button:active, select:active {
+            background-color: #1f6391;
+        }
+        button.clear-all {
+            background-color: transparent;
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+        }
+        button.clear-all:hover {
+            background-color: #e74c3c;
+            color: #fff;
+        }
+        button[title]:hover::after, select[title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #2c3e50;
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        .section {
+            margin-top: 15px;
+        }
+        .input-cell {
+            position: relative;
+            background-color: #fff9e6;
+        }
+        .input-cell input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+        }
+        .input-cell:focus-within span { opacity: 0; }
+        .input-cell input { background:#fff; color:#000; z-index:1; }
+            .input-cell input:focus {
+            opacity: 1;
+            border: 2px solid #3498db;
+        }
+        .input-cell span {
+            display: inline-block;
+            width: 100%;
+        }
+        .instructions {
+            margin-top: 15px;
+        }
+        .instructions ul {
+            margin-top: 8px;
+            padding-left: 20px;
+            font-size: 13px;
+        }
+        svg {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            display: block;
+            margin: 15px auto 0;
+        }
+        .legend {
+            margin-top: 8px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .legend span {
+            display: inline-block;
+            margin: 0 10px;
+        }
+        .legend .section1 {
+            color: #0000FF;
+            font-weight: bold;
+        }
+        .legend .section2 {
+            color: #FF0000;
+            font-weight: bold;
+        }
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            button, select {
+                width: 100%;
+                margin-right: 0;
+            }
+            th, td {
+                font-size: 11px;
+                padding: 6px;
+            }
+            .header h1 {
+                font-size: 18px;
+            }
+            .header p {
+                font-size: 11px;
+            }
+        }
+    
+        /* --- Compact UI tweaks --- */
+        body { padding: 10px; }
+        .container { padding: 12px; margin-bottom: 12px; }
+        table { margin-bottom: 10px; }
+        th, td { padding: 6px; font-size: 12px; }
+        button, select { padding: 6px 10px; font-size: 12px; margin-right: 6px; margin-bottom: 6px; }
+        .header { padding: 8px 12px; margin-bottom: 12px; }
+        .section { margin-top: 12px; }
+        .instructions ul { font-size: 12px; }
+        /* --- Tooltip badge --- */
+        .help-tip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #e9ecef;
+            color: #2c3e50;
+            font-weight: 700;
+            cursor: help;
+            margin-left: 6px;
+            user-select: none;
+            position: relative;
+        }
+        .help-tip:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            left: 50%;
+            bottom: 130%;
+            transform: translateX(-50%);
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.35;
+            white-space: pre-line;
+            min-width: 220px;
+            max-width: 360px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,.18);
+        }
+        .help-tip:hover::before {
+            content: "";
+            position: absolute;
+            left: 50%;
+            bottom: 120%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #2c3e50;
+        }
+        /* --- Import status --- */
+        .status { margin-top: 6px; font-size: 12px; }
+        .status.ok { color: #2e7d32; }       /* green */
+        .status.err { color: #e74c3c; }      /* red */
+        .status .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+
+        /* --- Compact utility classes (Bootstrap-like) --- */
+        .mb-2 { margin-bottom: 8px !important; }
+        .p-2  { padding: 8px !important; }
+        .btn-sm, .select-sm { padding: 4px 8px !important; font-size: 12px !important; line-height: 1.25 !important; }
+        .inline-field { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .inline-field label { font-weight: 600; color: #2c3e50; }
+        .row-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .soft-sep { border: 0; height: 1px; background: #e9ecef; margin: 10px 0; }
+
+
+/* === PATCH: Font colors & tooltip host positioning === */
+body { color: #222222; }
+.header h1, .container h2 { color: #1b3556; }
+th { color: #ffffff; background-color: #2e6da4; }
+td { color: #2b2b2b; }
+.input-cell input { color: #111111; }
+.legend .section1 { color: #0057ff; }
+.legend .section2 { color: #ff2b2b; }
+.fixed-footer { color: #4a4a4a; }
+
+/* Ensure ::after tooltips position relative to their controls */
+button[title], select[title] {
+  position: relative;
+  overflow: visible; /* prevent clipping of tooltip */
+}
+button[title]:hover::after,
+select[title]:hover::after {
+  pointer-events: none;
+  z-index: 1000;
+  top: -32px;
+}
+
+</style>
+</head>
+<footer class="fixed-footer">
+  Developed by Rattawit W. — Use at your own risk!! 😄😄😄
+</footer>
+
+<style>
+.fixed-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #f8f9fa;   /* light gray background */
+  color: #333;           /* text color */
+  text-align: center;
+  padding: 8px 0;
+  border-top: 1px solid #ddd;
+  font-size: 14px;
+  font-family: sans-serif;
+  z-index: 1000;         /* keep on top */
+}
+body {
+  margin-bottom: 40px;   /* prevent content overlap */
+}
+</style>
+<body>
+    <div class="header p-2 mb-2">
+        <h1>GOT - Coordinate Converter</h1>
+        <p>Owner: PPD/P Geomatics</p>
+		<p>Section 1: Converts WGS84 Lat/Long (Deg Min or Decimal Deg) to Indian 1975 UTM Zone 47N and Lat/Long DMS.</p> 
+		<p>Section 2 WGS84 output: Deg Min (default), Decimal Deg, or DMS. </p>
+		<p>Datum shift: dX=-204.64, dY=-834.74, dZ=-293.8. Format: "09°42.979’N" (WGS84 DM), "9.65892°N" (WGS84 D), "7°54'40.760"N" (Indian DMS).</p>
+        <p>Supports 10 points/section by default, more via TXT import, Excel copy-paste, CSV/KML export, and SVG visualization (WGS84 or UTM).</p> 
+		<button class="clear-all btn-sm" onclick="clearAllInputs()" title="Clear all inputs and SVG">Clear All Inputs</button>
+    </div>
+
+    <div class="container mb-2 p-2">
+        <h2>Section 1: WGS84 Lat/Long to Indian 1975 UTM and Lat/Long DMS</h2>
+        <div class="inline-field mb-2"><label for="section1InputFormat">Format:</label><select id="section1InputFormat" class="select-sm btn-sm" onchange="updateSection1Table()" title="Select input format for Section 1">
+            <option value="dm">Degrees and Decimal Minutes (DM)</option>
+            <option value="d">Decimal Degrees (D)</option>
+        </select></div>
+        <p>Import .txt or .csv file (format: PointID LatDeg LatMin LonDeg LonMin for DM, or PointID Lat Lon (decimal degrees) for D; TXT = space/tab, CSV = comma):</p>
+        <input type="file" id="fileInputSection1" accept=".txt,.csv">
+        <button class="btn-sm" onclick="loadFileSection1()" title="Load WGS84 coordinates from TXT/CSV file">Load TXT/CSV File</button>
+<button class="btn-sm" onclick="downloadSection1Sample('csv')" title="Download a CSV template matching the current input format">Sample (CSV)</button>
+<button class="btn-sm" onclick="downloadSection1Sample('txt')" title="Download a TXT template matching the current input format">Sample (TXT)</button>
+<span class="help-tip" data-tip="Expected columns (DM): PointID LatDeg LatMin LonDeg LonMin\nExpected columns (D): PointID Lat Lon (decimal degrees)\nAccepted: .txt (tab/space) or .csv (comma)\nExample (DM): P1 12 34.56 98 76.54\nExample (D): P1 12.57600 98.12345">?</span>
+<div id="section1Status" class="status"></div>
+        <table id="table1">
+            <thead>
+                <tr>
+                    <th>Point ID</th>
+                    <th>WGS84 Lat Deg</th>
+                    <th>WGS84 Lat Min</th>
+                    <th>WGS84 Lon Deg</th>
+                    <th>WGS84 Lon Min</th>
+                    <th>Indian UTM Easting</th>
+                    <th>Indian UTM Northing</th>
+                    <th>Indian Latitude</th>
+                    <th>Indian Longitude</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td class="input-cell"><span>9</span><input type="number" value="9"></td><td class="input-cell"><span>39.535</span><input type="number" step="0.000001" value="39.535"></td><td class="input-cell"><span>101</span><input type="number" value="101"></td><td class="input-cell"><span>21.718</span><input type="number" step="0.000001" value="21.718"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>2</td><td class="input-cell"><span>7</span><input type="number" value="7"></td><td class="input-cell"><span>54.807</span><input type="number" step="0.000001" value="54.807"></td><td class="input-cell"><span>102</span><input type="number" value="102"></td><td class="input-cell"><span>49.359</span><input type="number" step="0.000001" value="49.359"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>3</td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>4</td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>5</td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>6</td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>7</td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>8</td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>9</td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td></td><td></td><td></td><td></td></tr>
+                <tr><td>10</td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td class="input-cell"><span></span><input type="number"></td><td class="input-cell"><span></span><input type="number" step="0.000001"></td><td></td><td></td><td></td><td></td></tr>
+            </tbody>
+        </table>
+        <button class="btn-sm" onclick="safeCalculateSection1()" title="Calculate conversions for Section 1">Calculate Section 1</button>
+        <button class="btn-sm" onclick="clearSection1()" title="Clear Section 1 inputs">Clear Section 1 Inputs</button>
+        <button class="btn-sm" onclick="exportTableToCSV('table1', 'Convert_WGS84-Indian_1975.csv')" title="Export Section 1 as CSV">Export Section 1 as CSV</button>
+        <button class="btn-sm" onclick="exportTableToKML('table1', 'Convert_WGS84-Indian_1975.kml')" title="Export Section 1 as KML">Export Section 1 as KML</button>
+    <button class=\"btn-sm\" onclick=\"copyTable('table1', true)\" title=\"Copy Section 1 as TSV (with headers)\">Copy Section 1 (TSV)</button>
+        </div>
+    <hr class="soft-sep">
+    <div class="container section">
+        <h2>Section 2: Indian 1975 UTM to WGS84 Lat/Long and Indian Lat/Long DMS</h2>
+        <div class="inline-field mb-2"><label for="section2OutputFormat">Format:</label><select id="section2OutputFormat" class="select-sm btn-sm" onchange="calculateSection2()" title="Select WGS84 output format for Section 2">
+            <option value="dm">Degrees and Decimal Minutes (DM)</option>
+            <option value="d">Decimal Degrees (D)</option>
+            <option value="dms">Degrees, Minutes, Seconds (DMS)</option>
+        </select></div>
+        <p>Import .txt or .csv file (format: PointID X Y (Indian 1975 UTM); TXT = space/tab, CSV = comma):</p>
+        <input type="file" id="fileInputSection2" accept=".txt,.csv">
+        <button class="btn-sm" onclick="loadFileSection2()" title="Load UTM coordinates from TXT/CSV file">Load TXT/CSV File</button>
+<button class="btn-sm" onclick="downloadSection2Sample('csv')" title="Download a CSV template for UTM import">Sample (CSV)</button>
+<button class="btn-sm" onclick="downloadSection2Sample('txt')" title="Download a TXT template for UTM import">Sample (TXT)</button>
+<span class="help-tip" data-tip="Expected columns: PointID X Y (Indian 1975 UTM)\nAccepted: .txt (tab/space) or .csv (comma)\nExample: 1 759528.17 1068297.15">?</span>
+<div id="section2Status" class="status"></div>
+        <table id="table2">
+            <thead>
+                <tr>
+                    <th>Point ID</th>
+                    <th>WGS84 Latitude</th>
+                    <th>WGS84 Longitude</th>
+                    <th>Indian UTM Easting</th>
+                    <th>Indian UTM Northing</th>
+                    <th>Indian Latitude</th>
+                    <th>Indian Longitude</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td></td><td></td><td class="input-cell"><span>759528.17</span><input type="number" step="0.01" value="759528.17"></td><td class="input-cell"><span>1068297.15</span><input type="number" step="0.01" value="1068297.15"></td><td></td><td></td></tr>
+                <tr><td>2</td><td></td><td></td><td class="input-cell"><span>921975.34</span><input type="number" step="0.01" value="921975.34"></td><td class="input-cell"><span>876367.21</span><input type="number" step="0.01" value="876367.21"></td><td></td><td></td></tr>
+                <tr><td>3</td><td></td><td></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td></td><td></td></tr>
+                <tr><td>4</td><td></td><td></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td></td><td></td></tr>
+                <tr><td>5</td><td></td><td></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td></td><td></td></tr>
+                <tr><td>6</td><td></td><td></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td></td><td></td></tr>
+                <tr><td>7</td><td></td><td></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td></td><td></td></tr>
+                <tr><td>8</td><td></td><td></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td></td><td></td></tr>
+                <tr><td>9</td><td></td><td></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td></td><td></td></tr>
+                <tr><td>10</td><td></td><td></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td class="input-cell"><span></span><input type="number" step="0.01"></td><td></td><td></td></tr>
+            </tbody>
+        </table>
+        <button class="btn-sm" onclick="calculateSection2()" title="Calculate conversions for Section 2">Calculate Section 2</button>
+        <button class="btn-sm" onclick="clearSection2()" title="Clear Section 2 inputs">Clear Section 2 Inputs</button>
+        <button class="btn-sm" onclick="exportTableToCSV('table2', 'Convert_Indian_1975-WGS84.csv')" title="Export Section 2 as CSV">Export Section 2 as CSV</button>
+        <button class="btn-sm" onclick="exportTableToKML('table2', 'Convert_Indian_1975-WGS84.kml')" title="Export Section 2 as KML">Export Section 2 as KML</button>
+    <button class=\"btn-sm\" onclick=\"copyTable('table2', true)\" title=\"Copy Section 2 as TSV (with headers)\">Copy Section 2 (TSV)</button>
+        </div>
+    <hr class="soft-sep">
+    <div class="container section">
+        <h2>Coordinate Visualization</h2>
+        <select class="btn-sm select-sm" id="canvasMode" title="Select coordinate system for visualization">
+            <option value="wgs84">WGS84 Lat/Long</option>
+            <option value="utm">Indian 1975 UTM</option>
+        </select>
+        <button class="btn-sm" onclick="drawPointsOnSVG()" title="Display points on SVG">Show Points on SVG</button> <button class="btn-sm" onclick="exportDXFR12_Strict()" title="Export points to DXF (R12)">Export DXF (R12)</button><svg id="coordinateSVG" width="750" height="500"></svg>
+        <div class="legend">
+            <span class="section1">Section 1: Blue</span>
+            <span class="section2">Section 2: Red</span>
+        </div>
+    </div>
+
+    <div class="container instructions">
+        <h2>Instructions</h2>
+        <ul>
+            <li><b>Section 1</b>: Select input format (DM or D). For DM, enter WGS84 Lat/Long (Deg and Min) in highlighted cells (10 rows default) or import .txt file (format: PointID LatDeg LatMin LonDeg LonMin). For D, enter Decimal Degrees (Lat, Lon). Import format: PointID Lat Lon. Click "Load TXT File" to add rows if >10 points, then "Calculate Section 1" for Indian 1975 UTM and Lat/Long DMS.</li>
+            <li><b>Section 2</b>: Select WGS84 output format (DM default, D, or DMS). Enter Indian 1975 UTM X/Y in highlighted cells (10 rows default) or import .txt file (format: No. X Y). Click "Load TXT File" to add rows if >10 points, then "Calculate Section 2" for WGS84 Lat/Long and Indian Lat/Long DMS.</li>
+            <li><b>Visualize</b>: Select "WGS84 Lat/Long" or "Indian 1975 UTM", click "Show Points on SVG" to plot points (blue for Section 1, red for Section 2) with axes (degrees or meters). Scale bar shows distance. Grid lines use round numbers (e.g., 10, 20, 50, 100, 200, 500, 1000, 20000, 50000, 100000 meters for UTM) for distance estimation.</li>
+            <li><b>Export</b>: Click "Export Section 1/2 as CSV" or "Export Section 1/2 as KML" for Excel or GIS tools (e.g., Google Earth).</li>
+            <li><b>Copy to Excel</b>: Select table (drag or Ctrl+A), copy (Ctrl+C), paste into Excel.</li>
+            <li><b>Clear Inputs</b>: Use "Clear Section 1/2 Inputs" or "Clear All Inputs" to reset tables and SVG to 10 rows.</li>
+            <li><b>Offline Use</b>: Save as HTML for full offline functionality.</li>
+        </ul>
+    </div>
+
+    <script>
+        const PI = Math.PI;
+        const a_wgs = 6378137;
+        const f_wgs = 1 / 298.257223563;
+        const a_ind = 6377276.345;
+        const f_ind = 1 / 300.8017;
+        const dx = -204.64;
+        const dy = -834.74;
+        const dz = -293.8;
+        const k0 = 0.9996;
+        const zone = 47;
+        const cm = 6 * zone - 183;
+        const false_e = 500000;
+        const false_n = 0;
+
+        function degToRad(deg) {
+            return deg * PI / 180;
+        }
+
+        
+        // --- Robust number / line helpers ---
+        function parseMixedLines(text) {
+          const rows = [];
+          for (const raw of text.split(/\r?\n/)) {
+            if (!raw) continue;
+            const line = raw.trim();
+            if (!line) continue;
+            if (line.includes(',')) {
+              const out = []; let i=0, f='', q=false;
+              while (i < line.length) {
+                const ch = line[i];
+                if (q) {
+                  if (ch === '"') { if (i+1 < line.length && line[i+1] === '"') { f+='"'; i+=2; } else { q=false; i++; } }
+                  else { f+=ch; i++; }
+                } else {
+                  if (ch === '"') { q=true; i++; }
+                  else if (ch === ',') { out.push(f.trim()); f=''; i++; }
+                  else { f+=ch; i++; }
+                }
+              }
+              out.push(f.trim());
+              if (out.some(v => v !== '')) rows.push(out);
+            } else {
+              const parts = line.split(/\s+/).filter(Boolean);
+              if (parts.length) rows.push(parts);
+            }
+          }
+          return rows;
+        }
+        function toNumber(v) {
+          if (v == null) return NaN;
+          if (typeof v !== 'string') return Number(v);
+          // normalize commas, NBSP, Thai digits, stray degree/min/sec marks
+          const mapThai = {'๐':'0','๑':'1','๒':'2','๓':'3','๔':'4','๕':'5','๖':'6','๗':'7','๘':'8','๙':'9','−':'-'};
+          let s = v.replace(/[\u00A0\s]/g,'').replace(/[°'″”″"’]/g,'').replace(',', '.');
+          s = s.replace(/[๐-๙−]/g, ch => mapThai[ch] || ch);
+          return Number(s);
+        }
+        
+        function radToDeg(rad) {
+            return rad * 180 / PI;
+        }
+
+        function geodeticToECEF(lat, lon, h, a, f) {
+            const lat_rad = degToRad(lat);
+            const lon_rad = degToRad(lon);
+            const e2 = f * (2 - f);
+            const nu = a / Math.sqrt(1 - e2 * Math.sin(lat_rad) ** 2);
+            const X = (nu + h) * Math.cos(lat_rad) * Math.cos(lon_rad);
+            const Y = (nu + h) * Math.cos(lat_rad) * Math.sin(lon_rad);
+            const Z = (nu * (1 - e2) + h) * Math.sin(lat_rad);
+            return [X, Y, Z];
+        }
+
+        function ecefToGeodetic(X, Y, Z, a, f) {
+            const e2 = f * (2 - f);
+            const b = a * (1 - f);
+            const ep2 = (a ** 2 - b ** 2) / b ** 2;
+            const p = Math.sqrt(X ** 2 + Y ** 2);
+            let lon = Math.atan2(Y, X);
+            let lat = Math.atan2(Z, p * (1 - e2));
+            let h = 0;
+            for (let i = 0; i < 100; i++) {
+                const nu = a / Math.sqrt(1 - e2 * Math.sin(lat) ** 2);
+                const h_new = p / Math.cos(lat) - nu;
+                const lat_new = Math.atan2(Z + e2 * nu * Math.sin(lat), p);
+                if (Math.abs(lat_new - lat) < 1e-9 && Math.abs(h_new - h) < 1e-9) break;
+                lat = lat_new;
+                h = h_new;
+            }
+            lon = radToDeg(lon);
+            lat = radToDeg(lat);
+            return [lat, lon, h];
+        }
+
+        function latLonToUTM(lat, lon, a, f) {
+            const lambda0 = degToRad(cm);
+            const phi = degToRad(lat);
+            const lmb = degToRad(lon);
+            const e2 = f * (2 - f);
+            const e4 = e2 ** 2;
+            const e6 = e2 * e4;
+            const ep2 = e2 / (1 - e2);
+            const nu = a / Math.sqrt(1 - e2 * Math.sin(phi) ** 2);
+            const t = Math.tan(phi);
+            const eta2 = ep2 * Math.cos(phi) ** 2;
+            const l = lmb - lambda0;
+            const A = l * Math.cos(phi);
+            const alpha1 = 1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256;
+            const alpha2 = 3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024;
+            const alpha3 = 15 * e4 / 256 + 45 * e6 / 1024;
+            const alpha4 = 35 * e6 / 3072;
+            const M = a * (alpha1 * phi - alpha2 * Math.sin(2 * phi) + alpha3 * Math.sin(4 * phi) - alpha4 * Math.sin(6 * phi));
+            const term_e1 = A;
+            const term_e2 = (1 - t ** 2 + eta2) * A ** 3 / 6;
+            const term_e3 = (5 - 18 * t ** 2 + t ** 4 + 14 * eta2 - 58 * eta2 * t ** 2) * A ** 5 / 120;
+            const east = k0 * nu * (term_e1 + term_e2 + term_e3) + false_e;
+            const term_n1 = A ** 2 / 2;
+            const term_n2 = (5 - t ** 2 + 9 * eta2 + 4 * eta2 ** 2) * A ** 4 / 24;
+            const term_n3 = (61 - 58 * t ** 2 + t ** 4 + 270 * eta2 - 330 * eta2 * t ** 2) * A ** 6 / 720;
+            const north = k0 * (M + nu * t * (term_n1 + term_n2 + term_n3)) + false_n;
+            return [east, north];
+        }
+
+        function utmToLatLon(east, north, a, f) {
+            const lambda0 = degToRad(cm);
+            const e2 = f * (2 - f);
+            const e4 = e2 ** 2;
+            const e6 = e2 * e4;
+            const ep2 = e2 / (1 - e2);
+            const alpha1 = 1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256;
+            const M = north / k0;
+            const mu = M / (a * alpha1);
+            const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+            let phi1 = mu + (3 / 2 * e1 - 27 / 32 * e1 ** 3) * Math.sin(2 * mu) + (21 / 16 * e1 ** 2 - 55 / 32 * e1 ** 4) * Math.sin(4 * mu) + (151 / 96 * e1 ** 3) * Math.sin(6 * mu) + (1097 / 512 * e1 ** 4) * Math.sin(8 * mu);
+            const nu1 = a / Math.sqrt(1 - e2 * Math.sin(phi1) ** 2);
+            const rho1 = a * (1 - e2) / (1 - e2 * Math.sin(phi1) ** 2) ** 1.5;
+            const t1 = Math.tan(phi1);
+            const eta12 = ep2 * Math.cos(phi1) ** 2;
+            const D = (east - false_e) / (nu1 * k0);
+            const term_lat = D ** 2 / 2 - (5 + 3 * t1 ** 2 + 10 * eta12 - 4 * eta12 ** 2 - 9 * ep2) * D ** 4 / 24 + (61 + 90 * t1 ** 2 + 298 * eta12 + 45 * t1 ** 4 - 252 * ep2 - 3 * eta12 ** 2) * D ** 6 / 720;
+            let lat = phi1 - (nu1 * t1 / rho1) * term_lat;
+            const term_lon = D - (1 + 2 * t1 ** 2 + eta12) * D ** 3 / 6 + (5 - 2 * eta12 + 28 * t1 ** 2 - 3 * eta12 ** 2 + 8 * ep2 + 24 * t1 ** 4) * D ** 5 / 120;
+            let lon = lambda0 + term_lon / Math.cos(phi1);
+            lat = radToDeg(lat);
+            lon = radToDeg(lon);
+            return [lat, lon];
+        }
+
+        function wgs84ToIndian1975UTM(lat_dec, lon_dec) {
+            const ecef = geodeticToECEF(lat_dec, lon_dec, 0, a_wgs, f_wgs);
+            const x_ind = ecef[0] + dx;
+            const y_ind = ecef[1] + dy;
+            const z_ind = ecef[2] + dz;
+            const geod_ind = ecefToGeodetic(x_ind, y_ind, z_ind, a_ind, f_ind);
+            const lat_ind = geod_ind[0];
+            const lon_ind = geod_ind[1];
+            const utm = latLonToUTM(lat_ind, lon_ind, a_ind, f_ind);
+            return [utm[0], utm[1], lat_ind, lon_ind];
+        }
+
+        function indian1975UTMToWGS84(east, north) {
+            const geod_ind = utmToLatLon(east, north, a_ind, f_ind);
+            const lat_ind = geod_ind[0];
+            const lon_ind = geod_ind[1];
+            const ecef_ind = geodeticToECEF(lat_ind, lon_ind, 0, a_ind, f_ind);
+            const x_wgs = ecef_ind[0] - dx;
+            const y_wgs = ecef_ind[1] - dy;
+            const z_wgs = ecef_ind[2] - dz;
+            const geod_wgs = ecefToGeodetic(x_wgs, y_wgs, z_wgs, a_wgs, f_wgs);
+            const lat_wgs = geod_wgs[0];
+            const lon_wgs = geod_wgs[1];
+            return [lat_wgs, lon_wgs, lat_ind, lon_ind];
+        }
+
+        function formatDM(deg, isLat) {
+            const d = Math.floor(deg);
+            const min = (deg - d) * 60;
+            const padD = (d < 10) ? '0' + d : d;
+            const dir = isLat ? 'N' : 'E';
+            return `${padD}°${min.toFixed(6)}’${dir}`;
+        }
+
+        function formatD(deg, isLat) {
+            const dir = isLat ? 'N' : 'E';
+            return `${deg.toFixed(7)}°${dir}`;
+        }
+
+        function formatDMS(deg, isLat) {
+            const d = Math.floor(deg);
+            const minFull = (deg - d) * 60;
+            const m = Math.floor(minFull);
+            const sec = (minFull - m) * 60;
+            const padD = (d < 10) ? '0' + d : d;
+            const dir = isLat ? 'N' : 'E';
+            return `${padD}°${m}'${sec.toFixed(4)}"${dir}`;
+        }
+
+        function updateSection1Table() {
+            const format = document.getElementById('section1InputFormat').value;
+            const table = document.getElementById('table1');
+            const thead = table.getElementsByTagName('thead')[0];
+            const tbody = table.getElementsByTagName('tbody')[0];
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+            let headerRow = format === 'dm' ? `
+                <tr>
+                    <th>Point ID</th>
+                    <th>WGS84 Lat Deg</th>
+                    <th>WGS84 Lat Min</th>
+                    <th>WGS84 Lon Deg</th>
+                    <th>WGS84 Lon Min</th>
+                    <th>Indian UTM Easting</th>
+                    <th>Indian UTM Northing</th>
+                    <th>Indian Latitude</th>
+                    <th>Indian Longitude</th>
+                </tr>
+            ` : `
+                <tr>
+                    <th>Point ID</th>
+                    <th>WGS84 Latitude (°N)</th>
+                    <th>WGS84 Longitude (°E)</th>
+                    <th>Indian UTM Easting</th>
+                    <th>Indian UTM Northing</th>
+                    <th>Indian Latitude</th>
+                    <th>Indian Longitude</th>
+                </tr>
+            `;
+            thead.innerHTML = headerRow;
+            const rows = [];
+            for (let i = 1; i <= 10; i++) {
+                rows.push(format === 'dm' ? `
+                    <tr>
+                        <td>${i}</td>
+                        <td class="input-cell"><span></span><input type="number"></td>
+                        <td class="input-cell"><span></span><input type="number" step="0.000001"></td>
+                        <td class="input-cell"><span></span><input type="number"></td>
+                        <td class="input-cell"><span></span><input type="number" step="0.000001"></td>
+                        <td></td><td></td><td></td><td></td>
+                    </tr>
+                ` : `
+                    <tr>
+                        <td>${i}</td>
+                        <td class="input-cell"><span></span><input type="number" step="0.0000001"></td>
+                        <td class="input-cell"><span></span><input type="number" step="0.0000001"></td>
+                        <td></td><td></td><td></td><td></td>
+                    </tr>
+                `);
+            }
+            tbody.innerHTML = rows.join('');
+            document.querySelectorAll('#table1 .input-cell').forEach(cell => {
+                const input = cell.querySelector('input');
+                updateDisplay(cell);
+                input.addEventListener('input', () => updateDisplay(cell));
+            });
+        }
+
+        function updateDisplay(cell) {
+            const input = cell.querySelector('input');
+            const span = cell.querySelector('span');
+            span.innerText = input.value || '';
+        }
+
+        
+        // Safer numeric read for Section 1 cells
+        function getNumericFromCell(td){
+          if (!td) return NaN;
+          const inp = td.querySelector('input');
+          const raw = (inp && inp.value !== '') ? inp.value : td.textContent;
+          return toNumber(raw);
+        }
+        
+        function calculateSection1() {
+            const format = document.getElementById('section1InputFormat').value;
+            const table = document.getElementById('table1');
+            const rows = table.getElementsByTagName('tr');
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                let lat_dec, lon_dec;
+                if (format === 'dm') {
+                    const lat_deg = parseFloat(cells[1].querySelector('input').value);
+                    const lat_min = parseFloat(cells[2].querySelector('input').value);
+                    const lon_deg = parseFloat(cells[3].querySelector('input').value);
+                    const lon_min = parseFloat(cells[4].querySelector('input').value);
+                    if (!isNaN(lat_deg) && !isNaN(lat_min) && !isNaN(lon_deg) && !isNaN(lon_min)) {
+                        lat_dec = lat_deg + lat_min / 60;
+                        lon_dec = lon_deg + lon_min / 60;
+                    } else {
+                        continue;
+                    }
+                } else {
+                    lat_dec = parseFloat(cells[1].querySelector('input').value);
+                    lon_dec = parseFloat(cells[2].querySelector('input').value);
+                    if (isNaN(lat_dec) || isNaN(lon_dec)) continue;
+                }
+                const result = wgs84ToIndian1975UTM(lat_dec, lon_dec);
+                const offset = format === 'dm' ? 0 : -2;
+                cells[5 + offset].innerText = result[0].toFixed(2);
+                cells[6 + offset].innerText = result[1].toFixed(2);
+                cells[7 + offset].innerText = formatDMS(result[2], true);
+                cells[8 + offset].innerText = formatDMS(result[3], false);
+            }
+        }
+
+        function calculateSection2() {
+            const format = document.getElementById('section2OutputFormat').value;
+            const table = document.getElementById('table2');
+            const rows = table.getElementsByTagName('tr');
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                const east = parseFloat(cells[3].querySelector('input').value);
+                const north = parseFloat(cells[4].querySelector('input').value);
+                if (!isNaN(east) && !isNaN(north)) {
+                    const result = indian1975UTMToWGS84(east, north);
+                    cells[1].innerText = format === 'dm' ? formatDM(result[0], true) :
+                                        format === 'd' ? formatD(result[0], true) :
+                                        formatDMS(result[0], true);
+                    cells[2].innerText = format === 'dm' ? formatDM(result[1], false) :
+                                        format === 'd' ? formatD(result[1], false) :
+                                        formatDMS(result[1], false);
+                    cells[5].innerText = formatDMS(result[2], true);
+                    cells[6].innerText = formatDMS(result[3], false);
+                }
+            }
+        }
+
+        function loadFileSection1() {
+            const format = document.getElementById('section1InputFormat').value;
+            const file = document.getElementById('fileInputSection1').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const lines = e.target.result.split('\n').map(line => line.trim()).filter(line => line);
+                    const table = document.getElementById('table1');
+                    const tbody = table.getElementsByTagName('tbody')[0];
+                    const rows = table.getElementsByTagName('tr');
+                    let rowIndex = 1;
+                    clearSection1();
+                    lines.forEach(line => {
+                        const parts = line.split(/,|\s+/);
+                        if ((format === 'dm' && parts.length >= 5) || (format === 'd' && parts.length >= 3)) {
+                            const pointId = parts[0];
+                            const rowHtml = format === 'dm' ? `
+                                <tr>
+                                    <td>${pointId}</td>
+                                    <td class="input-cell"><span>${parts[1]}</span><input type="number" value="${parts[1]}"></td>
+                                    <td class="input-cell"><span>${parts[2]}</span><input type="number" step="0.000001" value="${parts[2]}"></td>
+                                    <td class="input-cell"><span>${parts[3]}</span><input type="number" value="${parts[3]}"></td>
+                                    <td class="input-cell"><span>${parts[4]}</span><input type="number" step="0.000001" value="${parts[4]}"></td>
+                                    <td></td><td></td><td></td><td></td>
+                                </tr>
+                            ` : `
+                                <tr>
+                                    <td>${pointId}</td>
+                                    <td class="input-cell"><span>${parts[1]}</span><input type="number" step="0.0000001" value="${parts[1]}"></td>
+                                    <td class="input-cell"><span>${parts[2]}</span><input type="number" step="0.0000001" value="${parts[2]}"></td>
+                                    <td></td><td></td><td></td><td></td>
+                                </tr>
+                            `;
+                            if (rowIndex >= rows.length) {
+                                const newRow = document.createElement('tr');
+                                newRow.innerHTML = rowHtml;
+                                tbody.appendChild(newRow);
+                            } else {
+                                const cells = rows[rowIndex].getElementsByTagName('td');
+                                cells[0].innerText = pointId;
+                                if (format === 'dm') {
+                                    cells[1].querySelector('input').value = parts[1];
+                                    cells[2].querySelector('input').value = parts[2];
+                                    cells[3].querySelector('input').value = parts[3];
+                                    cells[4].querySelector('input').value = parts[4];
+                                    updateDisplay(cells[1]);
+                                    updateDisplay(cells[2]);
+                                    updateDisplay(cells[3]);
+                                    updateDisplay(cells[4]);
+                                } else {
+                                    cells[1].querySelector('input').value = parts[1];
+                                    cells[2].querySelector('input').value = parts[2];
+                                    updateDisplay(cells[1]);
+                                    updateDisplay(cells[2]);
+                                
+}
+                            }
+                            rowIndex++;
+                        }
+                    });
+                    document.querySelectorAll('#table1 .input-cell').forEach(cell => {
+                        const input = cell.querySelector('input');
+                        input.addEventListener('input', () => updateDisplay(cell));
+                    });
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function loadFileSection2() {
+            const file = document.getElementById('fileInputSection2').files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const lines = e.target.result.split('\n').map(line => line.trim()).filter(line => line);
+                    const table = document.getElementById('table2');
+                    const tbody = table.getElementsByTagName('tbody')[0];
+                    const rows = table.getElementsByTagName('tr');
+                    let rowIndex = 1;
+                    clearSection2();
+                    lines.forEach(line => {
+                        const parts = line.split(/,|\s+/);
+                        if (parts.length >= 3) {
+                            const no = parts[0];
+                            const x = parts[1];
+                            const y = parts[2];
+                            if (rowIndex >= rows.length) {
+                                const newRow = document.createElement('tr');
+                                newRow.innerHTML = `
+                                    <td>${no}</td>
+                                    <td></td><td></td>
+                                    <td class="input-cell"><span>${x}</span><input type="number" step="0.01" value="${x}"></td>
+                                    <td class="input-cell"><span>${y}</span><input type="number" step="0.01" value="${y}"></td>
+                                    <td></td><td></td>
+                                `;
+                                tbody.appendChild(newRow);
+                            } else {
+                                const cells = rows[rowIndex].getElementsByTagName('td');
+                                cells[0].innerText = no;
+                                cells[3].querySelector('input').value = x;
+                                cells[4].querySelector('input').value = y;
+                                updateDisplay(cells[3]);
+                                updateDisplay(cells[4]);
+                            }
+                            rowIndex++;
+                        }
+                    });
+                    document.querySelectorAll('#table2 .input-cell').forEach(cell => {
+                        const input = cell.querySelector('input');
+                        input.addEventListener('input', () => updateDisplay(cell));
+                    });
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function clearSection1() {
+            updateSection1Table();
+        }
+
+        function clearSection2() {
+  const table = document.getElementById('table2');
+  if (!table) return;
+
+  const tbody = table.tBodies[0] || table.querySelector('tbody');
+  if (!tbody) return;
+
+  // Keep only 10 data rows
+  while (tbody.rows.length > 10) {
+    tbody.deleteRow(tbody.rows.length - 1);
+  }
+
+  // Clear remaining rows and renumber Point IDs
+  for (let i = 0; i < tbody.rows.length; i++) {
+    const row = tbody.rows[i];
+    const cells = row.cells;
+
+    // Renumber ID column
+    if (cells[0]) cells[0].textContent = String(i + 1);
+
+    // Clear inputs in cols 3 & 4 + their display spans
+    for (let j = 3; j <= 4; j++) {
+      const cell = cells[j];
+      if (!cell) continue;
+      const input = cell.querySelector('input');
+      if (input) input.value = '';
+      const span = cell.querySelector('span');
+      if (span) span.textContent = '';
+      if (typeof updateDisplay === 'function') updateDisplay(cell);
+    }
+
+    // Clear output cells: 1,2 and 5,6
+    if (cells[1]) cells[1].textContent = '';
+    if (cells[2]) cells[2].textContent = '';
+    if (cells[5]) cells[5].textContent = '';
+    if (cells[6]) cells[6].textContent = '';
+  }
+}
+
+        function clearAllInputs() {
+            clearSection1();
+            clearSection2();
+            document.getElementById('coordinateSVG').innerHTML = '';
+        }
+
+        function exportTableToCSV(tableId, filename) {
+            const table = document.getElementById(tableId);
+            const rows = table.getElementsByTagName('tr');
+            let csv = ['\uFEFF'];
+            const headers = Array.from(rows[0].getElementsByTagName('th')).map(header => `"${header.innerText.replace(/"/g, '""')}"`);
+            csv.push(headers.join(','));
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                const rowData = Array.from(cells).map(cell => {
+                    const span = cell.querySelector('span');
+                    const text = span ? span.innerText : cell.innerText;
+                    return `"${text.replace(/"/g, '""')}"`;
+                });
+                csv.push(rowData.join(','));
+            }
+            const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv.join('\n'));
+            const link = document.createElement('a');
+            link.setAttribute('href', csvContent);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function exportTableToKML(tableId, filename) {
+            const table = document.getElementById(tableId);
+            const rows = table.getElementsByTagName('tr');
+            const isSection1 = tableId === 'table1';
+            const format = isSection1 ? document.getElementById('section1InputFormat').value : 'dm';
+            let kml = '<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n';
+            kml += `<name>${isSection1 ? 'Section 1' : 'Section 2'} Coordinates</name>\n`;
+            for (let i = 1; i < rows.length; i++) {
+                const cells = rows[i].getElementsByTagName('td');
+                let lat, lon;
+                if (isSection1) {
+                    if (format === 'dm') {
+                        const latDeg = parseFloat(cells[1].querySelector('span').innerText);
+                        const latMin = parseFloat(cells[2].querySelector('span').innerText);
+                        const lonDeg = parseFloat(cells[3].querySelector('span').innerText);
+                        const lonMin = parseFloat(cells[4].querySelector('span').innerText);
+                        if (!isNaN(latDeg) && !isNaN(latMin) && !isNaN(lonDeg) && !isNaN(lonMin)) {
+                            lat = latDeg + latMin / 60;
+                            lon = lonDeg + lonMin / 60;
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        lat = parseFloat(cells[1].querySelector('span').innerText);
+                        lon = parseFloat(cells[2].querySelector('span').innerText);
+                        if (isNaN(lat) || isNaN(lon)) continue;
+                    }
+                } else {
+                    const east = parseFloat(cells[3].querySelector('span').innerText);
+                    const north = parseFloat(cells[4].querySelector('span').innerText);
+                    if (!isNaN(east) && !isNaN(north)) {
+                        const result = indian1975UTMToWGS84(east, north);
+                        lat = result[0];
+                        lon = result[1];
+                    } else {
+                        continue;
+                    }
+                }
+                const pointId = cells[0].innerText;
+                const offset = isSection1 && format === 'dm' ? 0 : -2;
+                const description = isSection1 ?
+                    format === 'dm' ?
+                    `PointID: ${pointId}, WGS84 Latitude: ${cells[1].querySelector('span').innerText}°${cells[2].querySelector('span').innerText}’N, WGS84 Longitude: ${cells[3].querySelector('span').innerText}°${cells[4].querySelector('span').innerText}’E, Indian UTM Easting: ${cells[5].innerText}, Indian UTM Northing: ${cells[6].innerText}, Indian Latitude: ${cells[7].innerText}, Indian Longitude: ${cells[8].innerText}` :
+                    `PointID: ${pointId}, WGS84 Latitude: ${cells[1].querySelector('span').innerText}°N, WGS84 Longitude: ${cells[2].querySelector('span').innerText}°E, Indian UTM Easting: ${cells[3].innerText}, Indian UTM Northing: ${cells[4].innerText}, Indian Latitude: ${cells[5].innerText}, Indian Longitude: ${cells[6].innerText}` :
+                    `PointID: ${pointId}, WGS84 Latitude: ${cells[1].innerText}, WGS84 Longitude: ${cells[2].innerText}, Indian UTM Easting: ${cells[3].querySelector('span').innerText}, Indian UTM Northing: ${cells[4].querySelector('span').innerText}, Indian Latitude: ${cells[5].innerText}, Indian Longitude: ${cells[6].innerText}`;
+                kml += `<Placemark>\n<name>${pointId}</name>\n<description>${description.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</description>\n<Point>\n<coordinates>${lon.toFixed(7)},${lat.toFixed(7)},0</coordinates>\n</Point>\n</Placemark>\n`;
+            }
+            kml += '</Document>\n</kml>';
+            const kmlContent = 'data:text/xml;charset=utf-8,' + encodeURIComponent(kml);
+            const link = document.createElement('a');
+            link.setAttribute('href', kmlContent);
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function getRoundInterval(range, mode) {
+            const roundValues = mode === 'wgs84' ? 
+                [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10] : 
+                [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
+            const targetMajorLines = 3;
+            const targetInterval = range / targetMajorLines;
+            let selectedInterval = roundValues[0];
+            let minDiff = Math.abs(targetInterval - roundValues[0]);
+            for (let value of roundValues) {
+                const diff = Math.abs(targetInterval - value);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    selectedInterval = value;
+                }
+            }
+            const majorLineCount = Math.ceil(range / selectedInterval);
+            if (majorLineCount > 4) {
+                const index = roundValues.indexOf(selectedInterval);
+                if (index < roundValues.length - 1) {
+                    selectedInterval = roundValues[index + 1];
+                }
+            }
+            return selectedInterval;
+        }
+
+        function drawPointsOnSVG() {
+            const svg = document.getElementById('coordinateSVG');
+            const mode = document.getElementById('canvasMode').value;
+            const format = document.getElementById('section1InputFormat').value;
+            svg.innerHTML = '';
+            svg.setAttribute('viewBox', `0 0 750 500`);
+
+            let points = [];
+            const table1 = document.getElementById('table1');
+            const rows1 = table1.getElementsByTagName('tr');
+            for (let i = 1; i < rows1.length; i++) {
+                const cells = rows1[i].getElementsByTagName('td');
+                const pointId = cells[0].innerText;
+                if (mode === 'wgs84') {
+                    let lat, lon;
+                    if (format === 'dm') {
+                        const latDeg = parseFloat(cells[1].querySelector('span').innerText);
+                        const latMin = parseFloat(cells[2].querySelector('span').innerText);
+                        const lonDeg = parseFloat(cells[3].querySelector('span').innerText);
+                        const lonMin = parseFloat(cells[4].querySelector('span').innerText);
+                        if (!isNaN(latDeg) && !isNaN(latMin) && !isNaN(lonDeg) && !isNaN(lonMin)) {
+                            lat = latDeg + latMin / 60;
+                            lon = lonDeg + lonMin / 60;
+                            points.push({ pointId, x: lon, y: lat, section: 'section1' });
+                        }
+                    } else {
+                        lat = parseFloat(cells[1].querySelector('span').innerText);
+                        lon = parseFloat(cells[2].querySelector('span').innerText);
+                        if (!isNaN(lat) && !isNaN(lon)) {
+                            points.push({ pointId, x: lon, y: lat, section: 'section1' });
+                        }
+                    }
+                } else {
+                    const offset = format === 'dm' ? 0 : -2;
+                    const east = parseFloat(cells[5 + offset].innerText);
+                    const north = parseFloat(cells[6 + offset].innerText);
+                    if (!isNaN(east) && !isNaN(north)) {
+                        points.push({ pointId, x: east, y: north, section: 'section1' });
+                    }
+                }
+            }
+
+            const table2 = document.getElementById('table2');
+            const rows2 = table2.getElementsByTagName('tr');
+            for (let i = 1; i < rows2.length; i++) {
+                const cells = rows2[i].getElementsByTagName('td');
+                const pointId = cells[0].innerText;
+                if (mode === 'wgs84') {
+                    const east = parseFloat(cells[3].querySelector('span').innerText);
+                    const north = parseFloat(cells[4].querySelector('span').innerText);
+                    if (!isNaN(east) && !isNaN(north)) {
+                        const result = indian1975UTMToWGS84(east, north);
+                        points.push({ pointId, x: result[1], y: result[0], section: 'section2' });
+                    }
+                } else {
+                    const east = parseFloat(cells[3].querySelector('span').innerText);
+                    const north = parseFloat(cells[4].querySelector('span').innerText);
+                    if (!isNaN(east) && !isNaN(north)) {
+                        points.push({ pointId, x: east, y: north, section: 'section2' });
+                    }
+                }
+            }
+
+            if (points.length === 0) {
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', 750 / 2);
+                text.setAttribute('y', 500 / 2);
+                text.setAttribute('font-size', 16);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('dominant-baseline', 'middle');
+                text.textContent = 'No valid points to display';
+                svg.appendChild(text);
+                return;
+            }
+
+            const xs = points.map(p => p.x);
+            const ys = points.map(p => p.y);
+            let minX = Math.min(...xs);
+            let maxX = Math.max(...xs);
+            let minY = Math.min(...ys);
+            let maxY = Math.max(...ys);
+            const xRange = maxX - minX || 0.01;
+            const yRange = maxY - minY || 0.01;
+            const xExpand = xRange * 0.25;
+            const yExpand = yRange * 0.25;
+            minX -= xExpand / 2;
+            maxX += xExpand / 2;
+            minY -= yExpand / 2;
+            maxY += yExpand / 2;
+            const xRangeExpanded = maxX - minX;
+            const yRangeExpanded = maxY - minY;
+
+            let xMajorStep = getRoundInterval(xRangeExpanded, mode);
+            let yMajorStep = getRoundInterval(yRangeExpanded, mode);
+            let xMinorStep = xMajorStep / 5;
+            let yMinorStep = yMajorStep / 5;
+
+            minX = Math.floor(minX / xMajorStep) * xMajorStep;
+            maxX = Math.ceil(maxX / xMajorStep) * xMajorStep;
+            minY = Math.floor(minY / yMajorStep) * yMajorStep;
+            maxY = Math.ceil(maxY / yMajorStep) * yMajorStep;
+            const xRangeFinal = maxX - minX;
+            const yRangeFinal = maxY - minY;
+
+            const padding = 50;
+            const width = 750 - 2 * padding;
+            const height = 500 - 2 * padding;
+            const maxTotalLines = 30;
+            const minorGridCount = 4;
+            let xMajorCount = Math.ceil(xRangeFinal / xMajorStep);
+            let yMajorCount = Math.ceil(yRangeFinal / yMajorStep);
+
+            if (xMajorCount * (minorGridCount + 1) > maxTotalLines) {
+                xMajorStep = getRoundInterval(xRangeFinal, mode) * 2;
+                xMinorStep = xMajorStep / 6;
+                xMajorCount = Math.ceil(xRangeFinal / xMajorStep);
+                minX = Math.floor(minX / xMajorStep) * xMajorStep;
+                maxX = Math.ceil(maxX / xMajorStep) * xMajorStep;
+            }
+            if (yMajorCount * (minorGridCount + 1) > maxTotalLines) {
+                yMajorStep = getRoundInterval(yRangeFinal, mode) * 2;
+                yMinorStep = yMajorStep / 6;
+                yMajorCount = Math.ceil(yRangeFinal / yMajorStep);
+                minY = Math.floor(minY / yMajorStep) * yMajorStep;
+                maxY = Math.ceil(maxY / yMajorStep) * yMajorStep;
+            }
+
+            for (let i = 0; i <= xMajorCount * (minorGridCount + 1); i++) {
+                const xValue = minX + i * xMinorStep;
+                if (xValue > maxX) continue;
+                const canvasX = padding + ((xValue - minX) / xRangeFinal) * width;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', canvasX);
+                line.setAttribute('y1', padding);
+                line.setAttribute('x2', canvasX);
+                line.setAttribute('y2', padding + height);
+                line.setAttribute('stroke', i % (minorGridCount + 1) === 0 ? '#666' : '#e0e0e0');
+                line.setAttribute('stroke-width', i % (minorGridCount + 1) === 0 ? 2 : 1);
+                svg.appendChild(line);
+                if (i % (minorGridCount + 1) === 0) {
+                    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    label.setAttribute('x', canvasX);
+                    label.setAttribute('y', padding + height + 20);
+                    label.setAttribute('font-size', 12);
+                    label.setAttribute('text-anchor', 'middle');
+                    label.textContent = mode === 'wgs84' ? `${xValue.toFixed(2)}°E` : `${xValue.toFixed(0)}m`;
+                    svg.appendChild(label);
+                }
+            }
+
+            for (let i = 0; i <= yMajorCount * (minorGridCount + 1); i++) {
+                const yValue = minY + i * yMinorStep;
+                if (yValue > maxY) continue;
+                const canvasY = padding + (1 - (yValue - minY) / yRangeFinal) * height;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', padding);
+                line.setAttribute('y1', canvasY);
+                line.setAttribute('x2', padding + width);
+                line.setAttribute('y2', canvasY);
+                line.setAttribute('stroke', i % (minorGridCount + 1) === 0 ? '#666' : '#e0e0e0');
+                line.setAttribute('stroke-width', i % (minorGridCount + 1) === 0 ? 2 : 1);
+                svg.appendChild(line);
+                if (i % (minorGridCount + 1) === 0) {
+                    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    label.setAttribute('x', padding - 10);
+                    label.setAttribute('y', canvasY + 4);
+                    label.setAttribute('font-size', 12);
+                    label.setAttribute('text-anchor', 'end');
+                    label.textContent = mode === 'wgs84' ? `${yValue.toFixed(2)}°N` : `${yValue.toFixed(0)}m`;
+                    svg.appendChild(label);
+                }
+            }
+
+            const axisX = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            const xAxisValue = minY + yRangeFinal / 2;
+            const canvasXAxisY = padding + (1 - (xAxisValue - minY) / yRangeFinal) * height;
+            axisX.setAttribute('x1', padding);
+            axisX.setAttribute('y1', canvasXAxisY);
+            axisX.setAttribute('x2', padding + width);
+            axisX.setAttribute('y2', canvasXAxisY);
+            axisX.setAttribute('stroke', '#333');
+            axisX.setAttribute('stroke-width', 3);
+            svg.appendChild(axisX);
+
+            const axisY = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            const yAxisValue = minX + xRangeFinal / 2;
+            const canvasYAxisX = padding + ((yAxisValue - minX) / xRangeFinal) * width;
+            axisY.setAttribute('x1', canvasYAxisX);
+            axisY.setAttribute('y1', padding);
+            axisY.setAttribute('x2', canvasYAxisX);
+            axisY.setAttribute('y2', padding + height);
+            axisY.setAttribute('stroke', '#333');
+            axisY.setAttribute('stroke-width', 3);
+            svg.appendChild(axisY);
+
+            const scaleBarLength = getRoundInterval(xRangeFinal * 0.1, mode);
+            const scaleBarPixelLength = (scaleBarLength / xRangeFinal) * width;
+            const scaleBarX = padding + width - scaleBarPixelLength - 10;
+            const scaleBarY = padding + height - 20;
+            const scaleBar = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            scaleBar.setAttribute('x1', scaleBarX);
+            scaleBar.setAttribute('y1', scaleBarY);
+            scaleBar.setAttribute('x2', scaleBarX + scaleBarPixelLength);
+            scaleBar.setAttribute('y2', scaleBarY);
+            scaleBar.setAttribute('stroke', '#000');
+            scaleBar.setAttribute('stroke-width', 2);
+            svg.appendChild(scaleBar);
+
+            const scaleBarLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            scaleBarLabel.setAttribute('x', scaleBarX + scaleBarPixelLength / 2);
+            scaleBarLabel.setAttribute('y', scaleBarY + 15);
+            scaleBarLabel.setAttribute('font-size', 12);
+            scaleBarLabel.setAttribute('text-anchor', 'middle');
+            scaleBarLabel.textContent = mode === 'wgs84' ? `${scaleBarLength.toFixed(2)}°` : `${scaleBarLength.toFixed(0)}m`;
+            svg.appendChild(scaleBarLabel);
+
+            points.forEach(point => {
+                const canvasX = padding + ((point.x - minX) / xRangeFinal) * width;
+                const canvasY = padding + (1 - (point.y - minY) / yRangeFinal) * height;
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', canvasX);
+                circle.setAttribute('cy', canvasY);
+                circle.setAttribute('r', 5);
+                circle.setAttribute('fill', point.section === 'section1' ? '#0000FF' : '#FF0000');
+    // PATCH: native tooltip for SVG points
+    const tip = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+    tip.textContent = `Point ${point.pointId} — X: ${point.x?.toFixed ? point.x.toFixed(5) : point.x}, Y: ${point.y?.toFixed ? point.y.toFixed(5) : point.y}`;
+    circle.appendChild(tip);
+    
+    svg.appendChild(circle);
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', canvasX + 8);
+                text.setAttribute('y', canvasY - 8);
+                text.setAttribute('font-size', 12);
+                text.textContent = point.pointId;
+                svg.appendChild(text);
+            });
+
+            const axisLabelFontSize = 14;
+            if (mode === 'wgs84') {
+                const lonLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                lonLabel.setAttribute('x', padding + width - 60);
+                lonLabel.setAttribute('y', canvasXAxisY + 20);
+                lonLabel.setAttribute('font-size', axisLabelFontSize);
+                lonLabel.textContent = 'Longitude (°E)';
+                svg.appendChild(lonLabel);
+                const latLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                latLabel.setAttribute('x', canvasYAxisX - 40);
+                latLabel.setAttribute('y', padding + 20);
+                latLabel.setAttribute('font-size', axisLabelFontSize);
+                latLabel.textContent = 'Latitude (°N)';
+                svg.appendChild(latLabel);
+            } else {
+                const eastLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                eastLabel.setAttribute('x', padding + width - 60);
+                eastLabel.setAttribute('y', canvasXAxisY + 20);
+                eastLabel.setAttribute('font-size', axisLabelFontSize);
+                eastLabel.textContent = 'Easting (m)';
+                svg.appendChild(eastLabel);
+                const northLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                northLabel.setAttribute('x', canvasYAxisX - 40);
+                northLabel.setAttribute('y', padding + 20);
+                northLabel.setAttribute('font-size', axisLabelFontSize);
+                northLabel.textContent = 'Northing (m)';
+                svg.appendChild(northLabel);
+            }
+        }
+
+        document.querySelectorAll('.input-cell').forEach(cell => {
+            const input = cell.querySelector('input');
+            updateDisplay(cell);
+            input.addEventListener('input', () => updateDisplay(cell));
+        });
+
+        updateSection1Table();
+
+        function downloadText(filename, text) {
+            const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(()=>URL.revokeObjectURL(link.href), 5000);
+        }
+
+        function downloadSection1Sample(kind) {
+            const format = document.getElementById('section1InputFormat').value; // 'dm' or 'd'
+            const isCSV = (kind === 'csv');
+            let headers, sampleRow, fname;
+            if (format === 'dm') {
+                headers = isCSV
+                    ? ['PointID','LatDeg','LatMin','LonDeg','LonMin']
+                    : 'PointID LatDeg LatMin LonDeg LonMin';
+                sampleRow = isCSV
+                    ? ['P1','12','34.56','98','76.54']
+                    : 'P1 12 34.56 98 76.54';
+                fname = isCSV ? 'Section1_DM_Sample.csv' : 'Section1_DM_Sample.txt';
+            } else {
+                headers = isCSV
+                    ? ['PointID','Lat','Lon (decimal degrees)']
+                    : 'PointID Lat Lon (decimal degrees)';
+                sampleRow = isCSV
+                    ? ['P1','12.57600','98.12345']
+                    : 'P1 12.57600 98.12345';
+                fname = isCSV ? 'Section1_D_Sample.csv' : 'Section1_D_Sample.txt';
+            }
+            const content = isCSV
+                ? headers.join(',') + '\n' + sampleRow.join(',')
+                : headers + '\n' + sampleRow;
+            downloadText(fname, content);
+        }
+
+        function downloadSection2Sample(kind) {
+            const isCSV = (kind === 'csv');
+            const headers = isCSV
+                ? ['PointID','X','Y (Indian 1975 UTM)']
+                : 'PointID X Y (Indian 1975 UTM)';
+            const sampleRow = isCSV
+                ? ['P1','759528.17','1068297.15']
+                : 'P1 759528.17 1068297.15';
+            const fname = isCSV ? 'Section2_Sample.csv' : 'Section2_Sample.txt';
+            const content = isCSV
+                ? headers.join(',') + '\n' + sampleRow.join(',')
+                : headers + '\n' + sampleRow;
+            downloadText(fname, content);
+        }
+
+    </script>
+<script>
+// === Added: Section 2 smart paste for UTM (max 10 lines) ===
+(function(){
+  function ensureRows(table, neededRows) {
+    const tbody = table.getElementsByTagName('tbody')[0];
+    while (table.getElementsByTagName('tr').length - 1 < neededRows) { // -1 for header
+      const last = tbody.lastElementChild;
+      const clone = last.cloneNode(true);
+      const tds = clone.getElementsByTagName('td');
+      // clear inputs & outputs (keep Point ID for now; will renumber later)
+      for (let j = 1; j < tds.length; j++) {
+        const td = tds[j];
+        const inp = td.querySelector('input');
+        if (inp) inp.value = '';
+        if (td.querySelector('span')) td.querySelector('span').innerText = '';
+        if (!inp && tds[j].children.length === 0) td.innerText = '';
+      }
+      tbody.appendChild(clone);
+    }
+  }
+  function renumberIDs(table){
+    const rows = table.getElementsByTagName('tr');
+    for (let i=1;i<rows.length;i++){
+      const cells = rows[i].getElementsByTagName('td');
+      if (cells && cells[0]) cells[0].innerText = i;
+    }
+  }
+  const table = document.getElementById('table2');
+  if (!table) return;
+  table.addEventListener('paste', function(e){
+    const target = e.target;
+    if (!(target && target.tagName === 'INPUT')) return;
+    const td = target.closest('td');
+    if (!td) return;
+    const row = td.closest('tr');
+    const colIndex = Array.prototype.indexOf.call(row.children, td);
+    if (colIndex !== 3 && colIndex !== 4) return; // only Easting (3) or Northing (4)
+    const clip = (e.clipboardData || window.clipboardData);
+    if (!clip) return;
+    const text = clip.getData('text');
+    if (!text || !/\n/.test(text)) return; // allow normal paste for single values
+    e.preventDefault();
+
+    let lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    if (lines.length > 10) lines = lines.slice(0,10); // cap at 10 lines
+
+    const tableEl = table;
+    const tbody = tableEl.getElementsByTagName('tbody')[0];
+    const rows = tableEl.getElementsByTagName('tr');
+    const startIndex = Array.prototype.indexOf.call(tbody.children, row);
+    const needed = startIndex + lines.length;
+    ensureRows(tableEl, needed);
+
+    let rowIndex = startIndex;
+    lines.forEach(line => {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 2) return;
+      const x = parseFloat(parts[0]);
+      const y = parseFloat(parts[1]);
+      if (!isFinite(x) || !isFinite(y)) return;
+      const r = tableEl.getElementsByTagName('tr')[rowIndex+1]; // +1 for header
+      const tds = r.getElementsByTagName('td');
+      // Fill Easting (td[3]) and Northing (td[4])
+      if (tds[3]) {
+        const inpE = tds[3].querySelector('input');
+        if (inpE) inpE.value = x;
+        if (tds[3].querySelector('span')) tds[3].querySelector('span').innerText = x;
+      }
+      if (tds[4]) {
+        const inpN = tds[4].querySelector('input');
+        if (inpN) inpN.value = y;
+        if (tds[4].querySelector('span')) tds[4].querySelector('span').innerText = y;
+      }
+      // Clear outputs for that row
+      if (tds[1]) tds[1].innerText = '';
+      if (tds[2]) tds[2].innerText = '';
+      if (tds[5]) tds[5].innerText = '';
+      if (tds[6]) tds[6].innerText = '';
+      rowIndex++;
+    });
+    renumberIDs(tableEl);
+  }, true);
+})();
+
+// === Added: Section 1 smart paste (handles DM or D), max 10 lines ===
+(function(){
+  const table = document.getElementById('table1');
+  if (!table) return;
+  table.addEventListener('paste', function(e){
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement)) return;
+    const td = target.closest('td');
+    const row = td && td.closest('tr');
+    if (!row) return;
+
+    const clip = (e.clipboardData || window.clipboardData);
+    if (!clip) return;
+    const text = clip.getData('text');
+    if (!text || !/\n/.test(text)) return; // normal single-value paste
+    e.preventDefault();
+
+    const formatEl = document.getElementById('section1InputFormat');
+    const fmt = formatEl ? formatEl.value : 'dm';
+    const lines = text.split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,10);
+    let startIndex = Array.prototype.indexOf.call(table.getElementsByTagName('tbody')[0].children, row);
+
+    lines.forEach((line, i)=>{
+      const r = table.getElementsByTagName('tr')[startIndex+1+i]; // +1 header
+      if (!r) return;
+      const cells = r.getElementsByTagName('td');
+      const parts = line.split(/,|\s+/);
+      if (fmt === 'dm') {
+        if (parts.length < 4) return;
+        const [latD, latM, lonD, lonM] = parts;
+        const latDCell = cells[1].querySelector('input');
+        const latMCell = cells[2].querySelector('input');
+        const lonDCell = cells[3].querySelector('input');
+        const lonMCell = cells[4].querySelector('input');
+        if (latDCell) latDCell.value = latD;
+        if (latMCell) latMCell.value = latM;
+        if (lonDCell) lonDCell.value = lonD;
+        if (lonMCell) lonMCell.value = lonM;
+        if (cells[1].querySelector('span')) cells[1].querySelector('span').innerText = latD;
+        if (cells[2].querySelector('span')) cells[2].querySelector('span').innerText = latM;
+        if (cells[3].querySelector('span')) cells[3].querySelector('span').innerText = lonD;
+        if (cells[4].querySelector('span')) cells[4].querySelector('span').innerText = lonM;
+      } else {
+        if (parts.length < 2) return;
+        const [lat, lon] = parts;
+        const latCell = cells[1].querySelector('input');
+        const lonCell = cells[2].querySelector('input');
+        if (latCell) latCell.value = lat;
+        if (lonCell) lonCell.value = lon;
+        if (cells[1].querySelector('span')) cells[1].querySelector('span').innerText = lat;
+        if (cells[2].querySelector('span')) cells[2].querySelector('span').innerText = lon;
+      }
+      const offset = (fmt === 'dm') ? 0 : -2;
+      for (let c=5+offset; c<=8+offset; c++){
+        if (cells[c]) cells[c].innerText = '';
+      }
+    });
+  }, true);
+})();
+
+</script>
+
+<script>
+// === DXF (R12) Export: Point marker + multiline label ===
+(function(){
+  // Format: D M.MMMM (no hemisphere letters), preserving sign if any
+  function formatDM4Plain(deg){
+    // old plain formatter (kept for compatibility)
+
+    if (!isFinite(deg)) return '';
+    const sign = deg < 0 ? '-' : '';
+    const abs = Math.abs(deg);
+    const d = Math.floor(abs);
+    const min = (abs - d) * 60;
+    return sign + d + ' ' + min.toFixed(4);
+  }
+
+  // Format: D M.MMMM with hemisphere suffix (N/S for lat, E/W for lon)
+  function formatDM4Suffix(deg, isLat){
+    if (!isFinite(deg)) return '';
+    const hemi = isLat ? (deg < 0 ? 'S' : 'N') : (deg < 0 ? 'W' : 'E');
+    const abs = Math.abs(deg);
+    const d = Math.floor(abs);
+    const min = (abs - d) * 60;
+    return d + ' ' + min.toFixed(6) + ' ' + hemi;
+  }
+
+function toDxfPair(code, value){
+  return String(code) + '\r\n' + String(value) + '\r\n';
+}
+
+
+  function dxfHeaderAndTables(ext){
+    let s = '';
+    // HEADER
+    s += toDxfPair(0,'SECTION') + toDxfPair(2,'HEADER');
+    s += toDxfPair(9,'$ACADVER') + toDxfPair(1,'AC1009'); // R12
+    s += toDxfPair(9,'$INSBASE') + toDxfPair(10,0.0) + toDxfPair(20,0.0) + toDxfPair(30,0.0);
+    if (ext){
+      s += toDxfPair(9,'$EXTMIN') + toDxfPair(10, ext.minx) + toDxfPair(20, ext.miny);
+      s += toDxfPair(9,'$EXTMAX') + toDxfPair(10, ext.maxx) + toDxfPair(20, ext.maxy);
+    }
+    s += toDxfPair(0,'ENDSEC');
+    // TABLES (minimal LTYPE/LAYER/STYLE)
+    s += toDxfPair(0,'SECTION') + toDxfPair(2,'TABLES');
+
+    // LTYPE
+    s += toDxfPair(0,'TABLE') + toDxfPair(2,'LTYPE') + toDxfPair(70,1);
+    s += toDxfPair(0,'LTYPE') + toDxfPair(2,'CONTINUOUS') + toDxfPair(70,0) + toDxfPair(3,'Solid line') + toDxfPair(72,65) + toDxfPair(73,0) + toDxfPair(40,0.0);
+    s += toDxfPair(0,'ENDTAB');
+
+    // LAYER
+    const layers = [
+      ['0', 7],
+      ['POINTS_SEC1', 5], // blue
+      ['POINTS_SEC2', 1], // red
+      ['LABELS_SEC1', 5],
+      ['LABELS_SEC2', 1]
+    ];
+    s += toDxfPair(0,'TABLE') + toDxfPair(2,'LAYER') + toDxfPair(70, layers.length);
+    for (const [name, color] of layers){
+      s += toDxfPair(0,'LAYER') + toDxfPair(2,name) + toDxfPair(70,0) + toDxfPair(62,color) + toDxfPair(6,'CONTINUOUS');
+    }
+    s += toDxfPair(0,'ENDTAB');
+
+    // STYLE (STANDARD)
+    s += toDxfPair(0,'TABLE') + toDxfPair(2,'STYLE') + toDxfPair(70,1);
+    s += toDxfPair(0,'STYLE') + toDxfPair(2,'STANDARD') + toDxfPair(70,0) + toDxfPair(40,0) + toDxfPair(41,1) + toDxfPair(50,0) + toDxfPair(71,0) + toDxfPair(42,0) + toDxfPair(3,'txt') + toDxfPair(4,'');
+    s += toDxfPair(0,'ENDTAB');
+
+    s += toDxfPair(0,'ENDSEC');
+    // Empty BLOCKS section for compatibility
+    s += toDxfPair(0,'SECTION') + toDxfPair(2,'BLOCKS');
+    s += toDxfPair(0,'ENDSEC');
+    return s;
+  }
+
+  function dxfPoint(x, y, layer){
+    function num(v){ return (Number.isFinite(v) ? v : 0); }
+    let e = '';
+    e += toDxfPair(0,'POINT');
+    e += toDxfPair(8,layer);
+    e += toDxfPair(10, num(x));
+    e += toDxfPair(20, num(y));
+    e += toDxfPair(30, 0);
+    return e;
+  }
+
+  function dxfCircle(x, y, r, layer){
+    function num(v){ return (Number.isFinite(v) ? v : 0); }
+    let e = '';
+    e += toDxfPair(0,'CIRCLE');
+    e += toDxfPair(8,layer);
+    e += toDxfPair(10, num(x));
+    e += toDxfPair(20, num(y));
+    e += toDxfPair(30, 0);
+    e += toDxfPair(40, Math.max(0.0001, num(r)));
+    return e;
+  }
+
+  function dxfText(x, y, h, layer, text){
+    function num(v){ return (Number.isFinite(v) ? v : 0); }
+    let e = '';
+    e += toDxfPair(0,'TEXT');
+    e += toDxfPair(8,layer);
+    e += toDxfPair(10, num(x));
+    e += toDxfPair(20, num(y));
+    e += toDxfPair(30, 0);
+    e += toDxfPair(40, Math.max(0.0001, num(h)));
+    e += toDxfPair(1, (text??'').toString());
+    e += toDxfPair(50, 0);
+    e += toDxfPair(7, 'STANDARD');
+    return e;
+  }
+
+  function collectPoints(){
+    const pts = [];
+    // Section 1 (WGS84 input -> compute Indian UTM and use given WGS lat/lon)
+    const fmt1 = document.getElementById('section1InputFormat')?.value || 'dm';
+    const rows1 = document.getElementById('table1')?.getElementsByTagName('tr') || [];
+    for (let i=1; i<rows1.length; i++){
+      const cells = rows1[i].getElementsByTagName('td');
+      if (!cells || !cells.length) continue;
+      const id = (cells[0].innerText || String(i)).trim();
+      let lat=null, lon=null;
+      if (fmt1 === 'dm'){
+        const latDeg = parseFloat(cells[1].querySelector('span')?.innerText);
+        const latMin = parseFloat(cells[2].querySelector('span')?.innerText);
+        const lonDeg = parseFloat(cells[3].querySelector('span')?.innerText);
+        const lonMin = parseFloat(cells[4].querySelector('span')?.innerText);
+        if (isFinite(latDeg) && isFinite(latMin) && isFinite(lonDeg) && isFinite(lonMin)){
+          lat = latDeg + latMin/60;
+          lon = lonDeg + lonMin/60;
+        }
+      } else {
+        lat = parseFloat(cells[1].querySelector('span')?.innerText);
+        lon = parseFloat(cells[2].querySelector('span')?.innerText);
+      }
+      if (!isFinite(lat) || !isFinite(lon)) continue;
+      const utm = wgs84ToIndian1975UTM(lat, lon);
+      const east = Array.isArray(utm) ? parseFloat(utm[0]) : NaN;
+      const north = Array.isArray(utm) ? parseFloat(utm[1]) : NaN;
+      if (!isFinite(east) || !isFinite(north)) continue;
+      pts.push({id, east, north, lat, lon, section:'section1'});
+    }
+
+    // Section 2 (Indian UTM input -> compute WGS84)
+    const rows2 = document.getElementById('table2')?.getElementsByTagName('tr') || [];
+    for (let i=1; i<rows2.length; i++){
+      const cells = rows2[i].getElementsByTagName('td');
+      if (!cells || !cells.length) continue;
+      const id = (cells[0].innerText || String(i)).trim();
+      const east = parseFloat(cells[3].querySelector('span')?.innerText);
+      const north = parseFloat(cells[4].querySelector('span')?.innerText);
+      if (!isFinite(east) || !isFinite(north)) continue;
+      const wgs = indian1975UTMToWGS84(east, north);
+      const lat = wgs[0];
+      const lon = wgs[1];
+      pts.push({id, east, north, lat, lon, section:'section2'});
+    }
+    return pts;
+  }
+
+  function buildDXF(pts){
+    const txtHeight = 5;     // meters; adjust if needed
+    const labelDX = 5;       // meters to the right of the point
+    const labelDY = 5;       // meters up from the point
+    const lineGap = txtHeight * 1.2;
+    const markerR = 1.5;     // small circle radius in meters
+
+    let s = '';
+    // Compute extents for header (helps some CADs)
+    let minx=Infinity, miny=Infinity, maxx=-Infinity, maxy=-Infinity;
+    pts.filter(p => isFinite(p.east) && isFinite(p.north) && isFinite(p.lat) && isFinite(p.lon)).forEach(p => { if (isFinite(p.east) && isFinite(p.north)) { if (p.east<minx) minx=p.east; if (p.north<miny) miny=p.north; if (p.east>maxx) maxx=p.east; if (p.north>maxy) maxy=p.north; } });
+    const ext = (isFinite(minx)&&isFinite(miny)&&isFinite(maxx)&&isFinite(maxy)) ? {minx, miny, maxx, maxy} : null;
+    s += dxfHeaderAndTables(ext);
+    s += toDxfPair(0,'SECTION') + toDxfPair(2,'ENTITIES');
+
+    pts.filter(p => isFinite(p.east) && isFinite(p.north) && isFinite(p.lat) && isFinite(p.lon)).forEach(p => {
+      const layerP = p.section === 'section1' ? 'POINTS_SEC1' : 'POINTS_SEC2';
+      const layerT = p.section === 'section1' ? 'LABELS_SEC1' : 'LABELS_SEC2';
+
+      // Marker: POINT + small CIRCLE so it's visible regardless of PDMODE
+      s += dxfPoint(p.east, p.north, layerP);
+      s += dxfCircle(p.east, p.north, markerR, layerP);
+
+      // Multiline label as stacked TEXT entities
+      const lines = [
+        String(p.id),
+        'Local X : ' + p.east.toFixed(2) + 'm',
+        'Local Y : ' + p.north.toFixed(2) + 'm',
+        'Lat WGS84 : ' + formatDM4Suffix(p.lat, true),
+        'Lon WGS84 : ' + formatDM4Suffix(p.lon, false)
+      ];
+      let x = p.east + labelDX;
+      let y = p.north + labelDY;
+      for (let i=0; i<lines.length; i++){
+        s += dxfText(x, y - i*lineGap, txtHeight, layerT, lines[i]);
+      }
+    });
+
+    s += toDxfPair(0,'ENDSEC') + toDxfPair(0,'EOF') + '\r\n';
+    return s;
+  }
+
+  window.exportDXFR12 = function(){
+    const pts = collectPoints();
+    if (!pts.length){
+      alert('No valid points to export.');
+      return;
+    }
+    const dxf = buildDXF(pts);
+// Encode as 7-bit ASCII bytes to avoid BOM / UTF-8 issues in some CADs
+const bytes = new Uint8Array(dxf.length);
+for (let i=0; i<dxf.length; i++) bytes[i] = dxf.charCodeAt(i) & 0x7F;
+const blob = new Blob([bytes], {type: 'application/octet-stream'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Points_R12.dxf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+})();
+</script>
+
+
+<script>
+// --- Strict R12 exporter (matches the simpler DXF structure used in your working file) ---
+(function(){
+  function toPair(c,v){ return String(c) + "\r\n" + String(v) + "\r\n"; }
+  function headerStrict(){
+    // Minimal HEADER/TABLES sections like the working jack-up file
+    let s = "";
+    s += "0\r\nSECTION\r\n2\r\nHEADER\r\n0\r\nENDSEC\r\n";
+    s += "0\r\nSECTION\r\n2\r\nTABLES\r\n0\r\nENDSEC\r\n";
+    s += "0\r\nSECTION\r\n2\r\nENTITIES\r\n";
+    return s;
+  }
+  function footerStrict(){ return "0\r\nENDSEC\r\n0\r\nEOF\r\n"; }
+
+  function entPOINT(x,y,layer){ return "0\r\nPOINT\r\n8\r\n"+layer+"\r\n10\r\n"+x+"\r\n20\r\n"+y+"\r\n30\r\n0\r\n"; }
+  function entCIRCLE(x,y,r,layer){ return "0\r\nCIRCLE\r\n8\r\n"+layer+"\r\n10\r\n"+x+"\r\n20\r\n"+y+"\r\n30\r\n0\r\n40\r\n"+r+"\r\n"; }
+  function entTEXT(x,y,h,txt,layer){
+    return "0\r\nTEXT\r\n8\r\n"+layer+"\r\n10\r\n"+x+"\r\n20\r\n"+y+"\r\n30\r\n0\r\n40\r\n"+h+"\r\n1\r\n"+txt+"\r\n50\r\n0\r\n7\r\nSTANDARD\r\n";
+  }
+
+  function formatDM4Suffix(deg, isLat){
+    if (!isFinite(deg)) return "";
+    const hemi = isLat ? (deg < 0 ? 'S' : 'N') : (deg < 0 ? 'W' : 'E');
+    const abs = Math.abs(deg); const d = Math.floor(abs); const m = (abs - d) * 60;
+    return d + " " + m.toFixed(4) + " " + hemi;
+  }
+
+  // Reuse the page's collectPoints() if available; otherwise build a minimal collector
+  function collectStrict(){
+    if (typeof collectPoints === "function") return collectPoints();
+    const pts = [];
+    // Section 1
+    const rows1 = document.getElementById('table1')?.getElementsByTagName('tr') || [];
+    for (let i=1;i<rows1.length;i++){
+      const c = rows1[i].getElementsByTagName('td');
+      if (!c || !c.length) continue;
+      const id = (c[0].innerText || String(i)).trim();
+      const latDeg = parseFloat(c[1].querySelector('span')?.innerText);
+      const latMin = parseFloat(c[2].querySelector('span')?.innerText);
+      const lonDeg = parseFloat(c[3].querySelector('span')?.innerText);
+      const lonMin = parseFloat(c[4].querySelector('span')?.innerText);
+      if ([latDeg,latMin,lonDeg,lonMin].every(Number.isFinite)){
+        const lat = latDeg + latMin/60, lon = lonDeg + lonMin/60;
+        const utm = wgs84ToIndian1975UTM(lat, lon);
+        const east = parseFloat(utm?.[0]); const north = parseFloat(utm?.[1]);
+        if (Number.isFinite(east) && Number.isFinite(north)){
+          pts.push({id, east, north, lat, lon, section:"section1"});
+        }
+      }
+    }
+    // Section 2
+    const rows2 = document.getElementById('table2')?.getElementsByTagName('tr') || [];
+    for (let i=1;i<rows2.length;i++){
+      const c = rows2[i].getElementsByTagName('td'); if (!c || !c.length) continue;
+      const id = (c[0].innerText || String(i)).trim();
+      const east = parseFloat(c[3].querySelector('span')?.innerText);
+      const north = parseFloat(c[4].querySelector('span')?.innerText);
+      if (Number.isFinite(east) && Number.isFinite(north)){
+        const w = indian1975UTMToWGS84(east, north);
+        const lat = parseFloat(w?.[0]); const lon = parseFloat(w?.[1]);
+        if (Number.isFinite(lat) && Number.isFinite(lon)){
+          pts.push({id, east, north, lat, lon, section:"section2"});
+        }
+      }
+    }
+    return pts;
+  }
+
+  window.exportDXFR12_Strict = function(){
+    const pts = collectStrict().filter(p => isFinite(p.east) && isFinite(p.north));
+    if (!pts.length){ alert("No valid points to export."); return; }
+
+    const txtHeight = 5, labelDX = 5, labelDY = 5, lineGap = txtHeight*1.2, markerR = 1.5;
+    let dxf = headerStrict();
+
+    pts.forEach(p => {
+      const layerP = p.section === "section1" ? "POINTS_SEC1" : "POINTS_SEC2";
+      const layerT = p.section === "section1" ? "LABELS_SEC1" : "LABELS_SEC2";
+      dxf += entPOINT(p.east, p.north, layerP);
+      dxf += entCIRCLE(p.east, p.north, markerR, layerP);
+
+      const lines = [
+        String(p.id),
+        "Local X : " + p.east.toFixed(2) + "m",
+        "Local Y : " + p.north.toFixed(2) + "m",
+        "Lat WGS84 : " + formatDM4Suffix(p.lat, true),
+        "Lon WGS84 : " + formatDM4Suffix(p.lon, false)
+      ];
+      let x = p.east + labelDX, y = p.north + labelDY;
+      for (let i=0;i<lines.length;i++){
+        dxf += entTEXT(x, y - i*lineGap, txtHeight, lines[i], layerT);
+      }
+    });
+
+    dxf += footerStrict();
+
+    // Save as ASCII bytes without BOM
+    const bytes = new Uint8Array(dxf.length);
+    for (let i=0;i<dxf.length;i++) bytes[i] = dxf.charCodeAt(i) & 0x7F;
+    const blob = new Blob([bytes], {type: "application/octet-stream"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "Points_R12.dxf";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  };
+})();
+</script>
+
+  <script>
+// PATCH: live mirror for input cells
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('#table1 .input-cell input, #table2 .input-cell input').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const cell = inp.closest('.input-cell');
+      if (cell) {
+        const span = cell.querySelector('span');
+        if (span) span.textContent = inp.value || '';
+      }
+    });
+  });
+});
+
+
+function safeCalculateSection1() {
+  try {
+    var messages = validateSection1Coordinates();
+    var el = document.getElementById('section1Status');
+    if (messages && messages.length) {
+      if (el) {
+        el.textContent = messages.join(' | ');
+        el.className = 'status err';
+      }
+      // Always surface as an alert too so it's hard to miss
+      alert(messages.join('\n'));
+      return;
+    }
+    calculateSection1();
+    if (el) { el.textContent = ''; el.className = 'status ok'; }
+  } catch (error) {
+    console.error('Section 1 calculation error:', error);
+    var message = 'Calculation failed: ' + (error && error.message ? error.message : String(error));
+    var el2 = document.getElementById('section1Status');
+    if (el2) { el2.textContent = message; el2.className = 'status err'; }
+    alert(message);
+  }
+}
+
+function validateCoordinateInput(lat, lon, context) {
+  context = context || '';
+  var errors = [];
+  var ctx = context ? String(context).trim() + ' ' : '';
+
+  var latNum = Number(lat);
+  var lonNum = Number(lon);
+
+  if (!isFinite(latNum)) errors.push(ctx + 'Latitude must be a finite number');
+  if (!isFinite(lonNum)) errors.push(ctx + 'Longitude must be a finite number');
+  if (errors.length) return errors;
+
+  if (latNum < -90 || latNum > 90)   errors.push(ctx + 'Latitude must be between -90° and 90°');
+  if (lonNum < -180 || lonNum > 180) errors.push(ctx + 'Longitude must be between -180° and 180°');
+
+  if (errors.length === 0 && (latNum < 5 || latNum > 20 || lonNum < 92 || lonNum > 108)) {
+    errors.push(ctx + 'Coordinates appear outside Thailand region');
+  }
+  return errors;
+}
+
+
+function validateSection1Coordinates() {
+  var messages = [];
+  var fmtEl = document.getElementById('section1InputFormat');
+  var format = fmtEl ? String(fmtEl.value || '').toLowerCase() : 'dm';
+  var table = document.getElementById('table1');
+  if (!table) return messages;
+  var rows = table.getElementsByTagName('tr');
+
+  function getNum(cell) {
+    if (!cell) return NaN;
+    var inp = cell.querySelector ? cell.querySelector('input') : null;
+    if (!inp) return NaN;
+    var v = (inp.value || '').trim();
+    if (v === '') return NaN;
+    var n = Number(v);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function isAllBlank(vals) {
+    for (var i = 0; i < vals.length; i++) {
+      if (!isNaN(vals[i])) return false;
+    }
+    return true;
+  }
+
+  for (var i = 1; i < rows.length; i++) {
+    var cells = rows[i].getElementsByTagName('td');
+    // Column mapping (Section 1 table):
+    // 0: Point ID
+    // 1: Lat Deg (or Decimal Degrees when format === 'd')
+    // 2: Lat Min (only when format === 'dm')
+    // 3: Lon Deg (DM only)
+    // 4: Lon Min (DM only)
+    // 2: Lon (Decimal Degrees when format === 'd'm')
+    var lat_dec = NaN, lon_dec = NaN;
+
+    if (format === 'dm') {
+      var latDeg = getNum(cells[1]);
+      var latMin = getNum(cells[2]);
+      var lonDeg = getNum(cells[3]);
+      var lonMin = getNum(cells[4]);
+
+      if (isAllBlank([latDeg, latMin, lonDeg, lonMin])) continue; // empty row, skip
+
+      // Numeric checks
+      if (isNaN(latDeg) || isNaN(latMin)) {
+        messages.push('Row ' + i + ': Latitude degrees/minutes must be numbers');
+      }
+      if (isNaN(lonDeg) || isNaN(lonMin)) {
+        messages.push('Row ' + i + ': Longitude degrees/minutes must be numbers');
+      }
+
+      // Range checks for minutes
+      if (!isNaN(latMin) && (latMin < 0 || latMin >= 60)) {
+        messages.push('Row ' + i + ': Latitude minutes must be between 0 and less than 60');
+      }
+      if (!isNaN(lonMin) && (lonMin < 0 || lonMin >= 60)) {
+        messages.push('Row ' + i + ': Longitude minutes must be between 0 and less than 60');
+      }
+
+      // If we have numbers, convert to decimal (respect sign of degrees)
+      if (!isNaN(latDeg) && !isNaN(latMin)) {
+        var latSign = (latDeg < 0) ? -1 : 1;
+        lat_dec = latSign * (Math.abs(latDeg) + (isNaN(latMin) ? 0 : (latMin / 60)));
+      }
+      if (!isNaN(lonDeg) && !isNaN(lonMin)) {
+        var lonSign = (lonDeg < 0) ? -1 : 1;
+        lon_dec = lonSign * (Math.abs(lonDeg) + (isNaN(lonMin) ? 0 : (lonMin / 60)));
+      }
+
+    } else { // format === 'd' (Decimal Degrees)
+      var latD = getNum(cells[1]);
+      var lonD = getNum(cells[2]);
+
+      if (isAllBlank([latD, lonD])) continue;
+
+      if (isNaN(latD) || isNaN(lonD)) {
+        messages.push('Row ' + i + ': Latitude/Longitude must be numbers');
+      } else {
+        lat_dec = latD;
+        lon_dec = lonD;
+      }
+    }
+
+    // If we computed decimals, run global lat/lon checks
+    if (!isNaN(lat_dec) && !isNaN(lon_dec)) {
+      var errs = validateCoordinateInput(lat_dec, lon_dec, 'Row ' + i + ':');
+      if (errs && errs.length) {
+        for (var k = 0; k < errs.length; k++) messages.push(errs[k]);
+      }
+    }
+  }
+  return messages;
+}
+
+</script>
+
+<script>
+(function(){
+  function copyTable(tableId, includeHeaders) {
+    var TAB = String.fromCharCode(9);
+    var NL  = String.fromCharCode(10);
+    var table = document.getElementById(tableId);
+    if (!table) return;
+    var rows = Array.prototype.slice.call(table.rows);
+    var lines = [];
+
+    if (includeHeaders && rows.length) {
+      var head = Array.prototype.map.call(rows[0].cells, function(c){ 
+        return (c.textContent || '').trim(); 
+      });
+      lines.push(head.join(TAB));
+    }
+
+    for (var r = 1; r < rows.length; r++) {
+      var cells = Array.prototype.map.call(rows[r].cells, function(c){
+        var inp = c.querySelector('input');
+        var span = c.querySelector('span');
+        var raw = (inp && inp.value !== '') ? inp.value : (span ? span.textContent : c.textContent);
+        raw = String(raw || '');
+        // sanitize tabs/newlines
+        raw = raw.split(TAB).join(' ');
+        raw = raw.split(NL).join(' ');
+        return raw.trim();
+      });
+      // skip empty row
+      var nonEmpty = false;
+      for (var i=0;i<cells.length;i++){ if (cells[i] !== '') { nonEmpty = true; break; } }
+      if (nonEmpty) lines.push(cells.join(TAB));
+    }
+
+    var tsv = lines.join(NL);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(tsv);
+    } else {
+      var ta = document.createElement('textarea');
+      ta.value = tsv;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+  }
+  window.copyTable = copyTable;
+})();
+</script>
+</body>
+</html>
