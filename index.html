@@ -551,6 +551,31 @@
         y: margin + pt.y * scaleY,
       });
 
+      // Gridlines
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.12)';
+      ctx.lineWidth = 1;
+
+      const stepX = 10;
+      const stepY = 50;
+
+      for (let x = stepX; x < maxX; x += stepX) {
+        const cx = margin + x * scaleX;
+        ctx.beginPath();
+        ctx.moveTo(cx, margin);
+        ctx.lineTo(cx, margin + maxY * scaleY);
+        ctx.stroke();
+      }
+
+      for (let y = stepY; y < maxY; y += stepY) {
+        const cy = margin + y * scaleY;
+        ctx.beginPath();
+        ctx.moveTo(margin, cy);
+        ctx.lineTo(margin + maxX * scaleX, cy);
+        ctx.stroke();
+      }
+      ctx.restore();
+
       // Water surface
       ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)';
       ctx.lineWidth = 2;
