@@ -56,7 +56,7 @@ function buildContext(config) {
   return {
     waterDepth: config.waterDepth,
     fairleadDepth: config.fairleadDepth,
-    targetDepth: config.waterDepth - config.fairleadDepth,
+    targetDepth: config.waterDepth - config.fairleadDepth, // Touchdown at y = WD - df; no sign flip.
     segments,
     totalLength,
     buoys,
