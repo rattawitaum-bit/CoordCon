@@ -54,7 +54,9 @@
       font-size: 0.95rem;
       color: #cbd5f5;
     }
-    select {
+    select,
+    input,
+    button {
       width: 100%;
       padding: 0.6rem 0.75rem;
       border-radius: 12px;
@@ -65,9 +67,64 @@
       outline: none;
       transition: border 0.2s ease;
     }
-    select:focus {
+    select:focus,
+    input:focus,
+    button:focus {
       border-color: #38bdf8;
       box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.35);
+    }
+    button {
+      margin-top: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #0f172a;
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      border: none;
+      box-shadow: 0 10px 25px rgba(14, 165, 233, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 28px rgba(14, 165, 233, 0.45);
+    }
+    fieldset {
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      border-radius: 12px;
+      padding: 0.75rem 0.9rem 0.85rem;
+      margin: 0 0 1rem;
+    }
+    fieldset legend {
+      padding: 0 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+    .inline {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.75rem;
+    }
+    .buoy-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .buoy-grid label {
+      margin-bottom: 0;
+    }
+    .buoy-block {
+      border: 1px dashed rgba(148, 163, 184, 0.3);
+      border-radius: 10px;
+      padding: 0.6rem 0.7rem;
+      margin-bottom: 0.75rem;
+    }
+    .buoy-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #facc15;
+      margin-bottom: 0.35rem;
     }
     #plot-wrapper {
       position: relative;
@@ -149,7 +206,66 @@
         Select tension
         <select id="tension-select"></select>
       </label>
-      <div id="scenario-info"></div>
+      <form id="input-form">
+        <fieldset>
+          <legend>Environment</legend>
+          <label>
+            Water depth WD (m)
+            <input type="number" step="0.01" id="water-depth" required />
+          </label>
+          <label>
+            Fairlead height df (m) (negative = above water)
+            <input type="number" step="0.01" id="fairlead-depth" required />
+          </label>
+          <label>
+            Total line length incl chain (m)
+            <input type="number" step="0.01" id="total-length" required />
+          </label>
+          <label>
+            Overlay tensions (t, comma-separated)
+            <input type="text" id="tension-list" placeholder="e.g. T650, H320" />
+          </label>
+        </fieldset>
+        <fieldset>
+          <legend>Wire (from fairlead)</legend>
+          <div class="inline">
+            <label>
+              Weight w_wire (kgf/m)
+              <input type="number" step="0.0001" id="wire-weight" required />
+            </label>
+            <label>
+              Friction μ_wire
+              <input type="number" step="0.0001" id="wire-friction" min="0" />
+            </label>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Chain (at anchor)</legend>
+          <div class="inline">
+            <label>
+              Chain length L_chain (m)
+              <input type="number" step="0.01" id="chain-length" required />
+            </label>
+            <label>
+              Weight w_chain (kgf/m)
+              <input type="number" step="0.0001" id="chain-weight" required />
+            </label>
+          </div>
+          <label>
+            Friction μ_chain
+            <input type="number" step="0.0001" id="chain-friction" min="0" />
+          </label>
+        </fieldset>
+        <fieldset>
+          <legend>Buoys</legend>
+          <label>
+            Number of buoys
+            <input type="number" id="buoy-count" min="0" step="1" value="0" />
+          </label>
+          <div id="buoy-inputs"></div>
+        </fieldset>
+        <button type="submit">Solve configuration</button>
+      </form>
       <div class="legend">
         <span><i style="background:#38bdf8;"></i>Suspended line</span>
         <span><i style="background:#f97316;"></i>Grounded on seabed</span>
@@ -189,12 +305,26 @@
     const tensionSelect = document.getElementById('tension-select');
     const metricsBody = document.querySelector('#metrics tbody');
     const warningsDiv = document.getElementById('warnings');
-    const scenarioInfo = document.getElementById('scenario-info');
+    const form = document.getElementById('input-form');
+    const waterDepthInput = document.getElementById('water-depth');
+    const fairleadDepthInput = document.getElementById('fairlead-depth');
+    const totalLengthInput = document.getElementById('total-length');
+    const tensionListInput = document.getElementById('tension-list');
+    const wireWeightInput = document.getElementById('wire-weight');
+    const wireFrictionInput = document.getElementById('wire-friction');
+    const chainLengthInput = document.getElementById('chain-length');
+    const chainWeightInput = document.getElementById('chain-weight');
+    const chainFrictionInput = document.getElementById('chain-friction');
+    const buoyCountInput = document.getElementById('buoy-count');
+    const buoyInputsDiv = document.getElementById('buoy-inputs');
     const canvas = document.getElementById('plot');
     const ctx = canvas.getContext('2d');
 
     let currentSolution = null;
     let currentConfig = null;
+    let currentScenarioName = 'Custom configuration';
+
+    tensionSelect.disabled = true;
 
     scenarios.forEach((scenario) => {
       const option = document.createElement('option');
@@ -216,24 +346,123 @@
       }
     });
 
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      runSolverFromForm();
+    });
+
+    buoyCountInput.addEventListener('change', () => {
+      const count = Math.max(0, Math.floor(Number(buoyCountInput.value) || 0));
+      const existing = captureBuoyInputValues();
+      rebuildBuoyInputs(count, existing);
+    });
+
     async function loadScenario(path) {
       try {
         const response = await fetch(path);
         const config = await response.json();
+        currentScenarioName = config.name || 'Scenario';
+        populateForm(config);
+        runSolverFromForm();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function populateForm(config) {
+      waterDepthInput.value = config.waterDepth ?? '';
+      fairleadDepthInput.value = config.fairleadDepth ?? '';
+      const totalLength = (config.wire?.length || 0) + (config.chain?.length || 0);
+      totalLengthInput.value = Number.isFinite(totalLength) ? totalLength : '';
+      tensionListInput.value = (config.tensionCases || [])
+        .map((entry) => `${entry.mode?.toUpperCase() || 'T'}${entry.value}`)
+        .join(', ');
+      wireWeightInput.value = config.wire?.weight ?? '';
+      wireFrictionInput.value = config.wire?.friction ?? '';
+      chainLengthInput.value = config.chain?.length ?? '';
+      chainWeightInput.value = config.chain?.weight ?? '';
+      chainFrictionInput.value = config.chain?.friction ?? '';
+      const buoys = Array.isArray(config.buoys) ? config.buoys : [];
+      buoyCountInput.value = buoys.length;
+      rebuildBuoyInputs(buoys.length, buoys);
+    }
+
+    function rebuildBuoyInputs(count, data = []) {
+      buoyInputsDiv.innerHTML = '';
+      for (let i = 0; i < count; i += 1) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'buoy-block';
+        const title = document.createElement('div');
+        title.className = 'buoy-title';
+        title.textContent = `Buoy ${i + 1}`;
+        const grid = document.createElement('div');
+        grid.className = 'buoy-grid buoy-row';
+        grid.dataset.index = i.toString();
+        grid.innerHTML = `
+          <label>
+            Uplift (t)
+            <input type="number" step="0.01" class="buoy-force" />
+          </label>
+          <label>
+            Pennant length (m)
+            <input type="number" step="0.01" class="buoy-pennant" />
+          </label>
+          <label>
+            Arc from anchor (m)
+            <input type="number" step="0.01" class="buoy-arc" />
+          </label>
+        `;
+        const buoyData = data[i] || {};
+        grid.querySelector('.buoy-force').value = buoyData.force ?? '';
+        grid.querySelector('.buoy-pennant').value = buoyData.pennantLength ?? '';
+        grid.querySelector('.buoy-arc').value = buoyData.arcLength ?? '';
+        wrapper.append(title, grid);
+        buoyInputsDiv.append(wrapper);
+      }
+    }
+
+    function captureBuoyInputValues() {
+      const values = [];
+      const rows = buoyInputsDiv.querySelectorAll('.buoy-row');
+      rows.forEach((row) => {
+        values.push({
+          force: row.querySelector('.buoy-force').value,
+          pennantLength: row.querySelector('.buoy-pennant').value,
+          arcLength: row.querySelector('.buoy-arc').value,
+        });
+      });
+      return values;
+    }
+
+    function runSolverFromForm() {
+      if (!form.reportValidity()) {
+        return;
+      }
+      let config;
+      try {
+        config = readConfigFromForm();
+      } catch (err) {
+        console.error(err);
+        showError(err.message);
+        return;
+      }
+
+      if (!config.tensionCases.length) {
+        showError('Enter at least one overlay tension (e.g. T650 or H320).');
+        currentSolution = null;
         currentConfig = config;
+        populateTensions({ results: [] });
+        renderMetrics({ results: [] });
+        clearCanvas();
+        return;
+      }
+
+      try {
         currentSolution = solve(config);
+        currentConfig = config;
         populateTensions(currentSolution);
         renderMetrics(currentSolution);
-        renderScenarioInfo(config);
-        warningsDiv.innerHTML = '';
-        if (currentSolution.warnings.length) {
-          for (const entry of currentSolution.warnings) {
-            const alert = document.createElement('div');
-            alert.className = 'warning';
-            alert.textContent = `${entry.caseId}: ${entry.warnings.join(', ')}`;
-            warningsDiv.append(alert);
-          }
-        }
+        renderWarnings(currentSolution);
         if (currentSolution.results.length) {
           tensionSelect.value = currentSolution.results[0].id;
           drawCase(currentSolution.results[0]);
@@ -242,11 +471,36 @@
         }
       } catch (err) {
         console.error(err);
+        showError(err.message || 'Failed to solve configuration.');
+      }
+    }
+
+    function showError(message) {
+      warningsDiv.innerHTML = '';
+      if (!message) return;
+      const alert = document.createElement('div');
+      alert.className = 'warning';
+      alert.textContent = message;
+      warningsDiv.append(alert);
+    }
+
+    function renderWarnings(solution) {
+      warningsDiv.innerHTML = '';
+      if (!solution || !solution.warnings || !solution.warnings.length) return;
+      for (const entry of solution.warnings) {
+        const alert = document.createElement('div');
+        alert.className = 'warning';
+        alert.textContent = `${entry.caseId}: ${entry.warnings.join(', ')}`;
+        warningsDiv.append(alert);
       }
     }
 
     function populateTensions(solution) {
       tensionSelect.innerHTML = '';
+      tensionSelect.value = '';
+      const hasResults = Boolean(solution && solution.results && solution.results.length);
+      tensionSelect.disabled = !hasResults;
+      if (!hasResults) return;
       for (const result of solution.results) {
         const option = document.createElement('option');
         option.value = result.id;
@@ -257,6 +511,7 @@
 
     function renderMetrics(solution) {
       metricsBody.innerHTML = '';
+      if (!solution || !solution.results) return;
       for (const result of solution.results) {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -270,15 +525,6 @@
         `;
         metricsBody.append(row);
       }
-    }
-
-    function renderScenarioInfo(config) {
-      scenarioInfo.innerHTML = `
-        <p><strong>Water depth:</strong> ${formatNumber(config.waterDepth)} m</p>
-        <p><strong>Fairlead depth:</strong> ${formatNumber(config.fairleadDepth)} m</p>
-        <p><strong>Wire length:</strong> ${formatNumber(config.wire.length)} m</p>
-        <p><strong>Chain length:</strong> ${formatNumber(config.chain.length)} m</p>
-      `;
     }
 
     function formatNumber(value) {
@@ -383,6 +629,112 @@
       ctx.beginPath();
       ctx.arc(anchor.x, anchor.y, 5, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    function readConfigFromForm() {
+      const waterDepth = Number(waterDepthInput.value);
+      const fairleadDepth = Number(fairleadDepthInput.value);
+      const totalLength = Number(totalLengthInput.value);
+      const chainLength = Number(chainLengthInput.value);
+      const wireLength = totalLength - chainLength;
+      if (!Number.isFinite(wireLength)) {
+        throw new Error('Please provide valid line lengths.');
+      }
+      if (wireLength < 0) {
+        throw new Error('Chain length cannot exceed total line length.');
+      }
+
+      const tensionCases = parseTensionList(tensionListInput.value);
+
+      const buoys = [];
+      const rows = buoyInputsDiv.querySelectorAll('.buoy-row');
+      rows.forEach((row, index) => {
+        const forceField = row.querySelector('.buoy-force');
+        const pennantField = row.querySelector('.buoy-pennant');
+        const arcField = row.querySelector('.buoy-arc');
+        const rawForce = forceField.value;
+        const rawPennant = pennantField.value;
+        const rawArc = arcField.value;
+        if (rawForce === '' && rawPennant === '' && rawArc === '') {
+          return;
+        }
+        const force = Number(rawForce);
+        const pennantLength = Number(rawPennant);
+        const arcLength = Number(rawArc);
+        if (!Number.isFinite(force) || !Number.isFinite(pennantLength) || !Number.isFinite(arcLength)) {
+          return;
+        }
+        buoys.push({
+          name: `Buoy ${index + 1}`,
+          force,
+          pennantLength,
+          arcLength,
+        });
+      });
+
+      return {
+        name: currentScenarioName,
+        waterDepth,
+        fairleadDepth,
+        wire: {
+          length: wireLength,
+          weight: Number(wireWeightInput.value),
+          friction: Number(wireFrictionInput.value),
+        },
+        chain: {
+          length: chainLength,
+          weight: Number(chainWeightInput.value),
+          friction: Number(chainFrictionInput.value),
+        },
+        buoys,
+        tensionCases,
+      };
+    }
+
+    function parseTensionList(input) {
+      if (!input) return [];
+      const tokens = input
+        .split(',')
+        .map((token) => token.trim())
+        .filter(Boolean);
+      const cases = [];
+      tokens.forEach((token, index) => {
+        const parsed = parseTensionToken(token);
+        if (!parsed) return;
+        const label = `${parsed.mode}-mode ${parsed.value}`;
+        cases.push({
+          id: `${parsed.mode}${parsed.value}_${index}`,
+          label,
+          mode: parsed.mode,
+          value: parsed.value,
+        });
+      });
+      return cases;
+    }
+
+    function parseTensionToken(token) {
+      if (!token) return null;
+      const normalised = token.replace(/\s+/g, '').toUpperCase();
+      let mode = 'T';
+      let valuePart = normalised;
+
+      if (valuePart.includes(':')) {
+        const [prefix, rest] = valuePart.split(':');
+        if (prefix === 'T' || prefix === 'H') {
+          mode = prefix;
+          valuePart = rest;
+        }
+      } else if (valuePart.startsWith('T') || valuePart.startsWith('H')) {
+        mode = valuePart[0];
+        valuePart = valuePart.slice(1);
+      } else if (valuePart.endsWith('T') || valuePart.endsWith('H')) {
+        mode = valuePart.slice(-1);
+        valuePart = valuePart.slice(0, -1);
+      }
+
+      const value = Number(valuePart);
+      if (!Number.isFinite(value)) return null;
+      return { mode, value };
     }
 
     loadScenario(scenarios[0].input);
