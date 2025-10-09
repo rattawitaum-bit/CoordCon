@@ -378,23 +378,49 @@ function finalizeCase(context, params) {
     totalGrounded,
     anchorDistance,
     H_anchor,
-    geometry: buildGeometry(context, integration, touchdown, totalGrounded),
+    geometry: buildGeometry(context, integration, touchdown, totalGrounded, u0),
     buoyStates: integration.buoyStates,
     warnings,
   };
 }
 
-function buildGeometry(context, integration, touchdown, totalGrounded) {
+function buildGeometry(context, integration, touchdown, totalGrounded, u0) {
   const suspendedPoints = integration.points.map((pt) => ({ x: pt.x, y: pt.y }));
+  const smoothedSuspended = smoothSuspendedCurve(suspendedPoints, u0);
   const seabedPoints = [];
   if (totalGrounded > 0) {
     seabedPoints.push({ x: touchdown.x, y: touchdown.y });
     seabedPoints.push({ x: touchdown.x + totalGrounded, y: touchdown.y });
   }
   return {
-    suspended: suspendedPoints,
+    suspended: smoothedSuspended,
     seabed: seabedPoints,
   };
+}
+
+function smoothSuspendedCurve(points, u0) {
+  if (!points || points.length < 2) return points || [];
+  const start = points[0];
+  const end = points[points.length - 1];
+  const spanX = end.x - start.x;
+  const spanY = end.y - start.y;
+  if (!Number.isFinite(spanX) || Math.abs(spanX) < EPS || !Number.isFinite(spanY)) {
+    return points;
+  }
+  const avgSlope = spanY / spanX;
+  const slope0 = Math.max(avgSlope * 2, avgSlope + 1);
+  const m0 = slope0 * spanX;
+  return points.map((pt) => {
+    const tRaw = spanX !== 0 ? (pt.x - start.x) / spanX : 0;
+    const t = Math.min(Math.max(tRaw, 0), 1);
+    const t2 = t * t;
+    const t3 = t2 * t;
+    const h00 = 2 * t3 - 3 * t2 + 1;
+    const h10 = t3 - 2 * t2 + t;
+    const h01 = -2 * t3 + 3 * t2;
+    const y = h00 * start.y + h01 * end.y + h10 * m0;
+    return { x: pt.x, y };
+  });
 }
 
 export function solve(config) {
