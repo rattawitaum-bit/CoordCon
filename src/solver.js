@@ -35,13 +35,21 @@ function buildContext(config) {
   }
 
   const totalLength = cumulative;
-  const buoys = (config.buoys || []).map((b, index) => ({
-    arcLength: b.arcLength,
-    force: b.force,
-    pennantLength: b.pennantLength || 0,
-    name: b.name || `buoy-${index + 1}`,
-    surfaceFirst: b.surfaceFirst !== false,
-  })).sort((a, b) => a.arcLength - b.arcLength);
+  const buoys = (config.buoys || []).map((b, index) => {
+    const arcFromAnchor = Number(b.arcLength);
+    const arcFromFairlead = Number.isFinite(arcFromAnchor) ? totalLength - arcFromAnchor : null;
+    if (!Number.isFinite(arcFromFairlead) || arcFromFairlead < 0 || arcFromFairlead > totalLength) {
+      throw new Error(`Invalid buoy arc for ${b.name || `buoy-${index + 1}`}`);
+    }
+    return {
+      arcLength: arcFromFairlead,
+      arcFromAnchor,
+      force: b.force,
+      pennantLength: b.pennantLength || 0,
+      name: b.name || `buoy-${index + 1}`,
+      surfaceFirst: b.surfaceFirst !== false,
+    };
+  }).sort((a, b) => a.arcLength - b.arcLength);
 
   return {
     waterDepth: config.waterDepth,
@@ -125,6 +133,7 @@ function integrateLine({ context, H, u0, stopAtTarget }) {
         buoyStates.push({
           name: buoy.name,
           arcLength: buoy.arcLength,
+          arcFromAnchor: buoy.arcFromAnchor,
           attach: { x: attachX, y: attachDepth },
           buoyDepth,
           taut,

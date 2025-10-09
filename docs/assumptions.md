@@ -17,7 +17,7 @@
 ## Segments and buoy handling
 
 * The line is assembled as two in-line segments in this order: wire first, chain second. Segment-specific weight (`w`) and seabed friction (`μ`) properties switch instantaneously at their arc-length boundaries.
-* Buoys (if any) are defined by their along-line attachment (`arcLength`), upward force (`force`), and pennant length. When the integration arrives at the buoy location the vertical component of tension is reduced by the applied buoyancy, clamped to non-negative values:
+* Buoys (if any) are defined by their along-line attachment (`arcLength` measured from the anchor toward the fairlead), upward force (`force`), and pennant length. When the integration arrives at the buoy location the vertical component of tension is reduced by the applied buoyancy, clamped to non-negative values:
   * `V_above = max(0, V_below − F_buoy)`
   * The vertical drop is only applied when the pennant is taut. The pennant is considered taut when the attached point on the line is deeper than the pennant length below the buoy. The buoy is drawn at depth `y_abs = fairleadDepth + (attachDepth − pennantLength)` but never above the surface.
 
@@ -45,7 +45,7 @@ The physics solver is exposed via `solve(config)` from `src/solver.js`. The conf
   "chain": { "length": number, "weight": number, "friction": number },
   "buoys": [
     {
-      "arcLength": number,       // metres along the line from the fairlead
+      "arcLength": number,       // metres along the line from the anchor
       "force": number,           // upward force
       "pennantLength": number    // slack length, metres
     }

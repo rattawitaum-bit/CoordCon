@@ -3,18 +3,18 @@
   "input": "adm502_inputs.json",
   "metrics": {
     "T650": {
-      "FL_TD": 447.026,
+      "FL_TD": 418.087,
       "wire_gnd": 0.0,
-      "chain_gnd": 39.641,
-      "anchor": 486.667,
-      "H_anchor_t": 611.945
+      "chain_gnd": 69.815,
+      "anchor": 487.902,
+      "H_anchor_t": 582.978
     },
     "H320": {
-      "FL_TD": 338.439,
+      "FL_TD": 298.005,
       "wire_gnd": 0.0,
-      "chain_gnd": 141.434,
-      "anchor": 479.874,
-      "H_anchor_t": 184.223
+      "chain_gnd": 176.675,
+      "anchor": 474.679,
+      "H_anchor_t": 150.392
     }
   }
 }
