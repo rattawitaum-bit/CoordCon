@@ -29,7 +29,7 @@
 
 ## Tension modes
 
-* **T-mode** (`mode: "T"`): the total fairlead tension magnitude is prescribed. The solver brackets and bisects the horizontal component `H` so that, if the line were fully suspended, the total vertical drop equals the water depth. This guarantees the longest fairlead-to-touchdown span that is compatible with the prescribed total tension.
+* **T-mode** (`mode: "T"`): the total fairlead tension magnitude is prescribed. The solver brackets and bisects the fairlead catenary parameter `u₀`; each trial uses `H = T / cosh(u₀)` so the prescribed total tension is honoured while searching for a suspended profile that just reaches the seabed. This guarantees the longest fairlead-to-touchdown span that is compatible with the prescribed total tension.
 * **H-mode** (`mode: "H"`): the fairlead horizontal tension component is prescribed. The solver brackets and bisects the initial catenary parameter `u₀` to reach the same limiting geometry (the suspended solution reaches the seabed exactly at the end of the full length).
 * The vertical component at the fairlead is determined from `u₀` by `V₀ = H sinh(u₀)`; the total fairlead tension is `T = H cosh(u₀)`.
 
@@ -69,6 +69,6 @@ The return value is `{ results, warnings, context }`, where each entry in `resul
 * `H_anchor` (horizontal tension that reaches the anchor)
 * `geometry` (arrays of points for suspended and grounded portions)
 * `buoyStates` (taut/slack status and drawing data)
-* `warnings` (e.g. "dragging risk" when the anchor tension decays to zero with grounded length present)
+* `warnings` (e.g. "dragging risk" when the anchor tension decays to zero with grounded length present, "No grounded length: anchor-drag risk" when the suspended solution consumes the entire line)
 
 The solver raises an error when both the wire and chain have zero length (`"No suspended line; anchor dragging risk."`) and when the prescribed tension cannot deliver a seabed touchdown.

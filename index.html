@@ -105,6 +105,33 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.75rem;
     }
+    .tension-mode {
+      margin-top: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      color: #cbd5f5;
+      font-size: 0.9rem;
+    }
+    .tension-mode .mode-options {
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .tension-mode label {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .tension-mode input[type="radio"],
+    .tension-mode input[type="checkbox"] {
+      width: auto;
+      height: auto;
+    }
+    .advanced-only {
+      display: none;
+    }
     .buoy-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -222,9 +249,25 @@
             <input type="number" step="0.01" id="total-length" required />
           </label>
           <label>
-            Overlay tensions (t, comma-separated)
-            <input type="text" id="tension-list" placeholder="e.g. T650, H320" />
+            Fairlead Total Tension (t)
+            <input type="text" id="tension-list" placeholder="Comma-separated (e.g. 5, 7, H:320)" />
           </label>
+          <div class="tension-mode">
+            <div class="mode-options">
+              <label>
+                <input type="radio" name="tension-mode" value="T" checked />
+                Total tension @ fairlead
+              </label>
+              <label class="advanced-only">
+                <input type="radio" name="tension-mode" value="H" />
+                Horizontal tension @ fairlead
+              </label>
+            </div>
+            <label>
+              <input type="checkbox" id="tension-advanced-toggle" />
+              Advanced tension modes
+            </label>
+          </div>
         </fieldset>
         <fieldset>
           <legend>Wire (from fairlead)</legend>
@@ -310,6 +353,9 @@
     const fairleadDepthInput = document.getElementById('fairlead-depth');
     const totalLengthInput = document.getElementById('total-length');
     const tensionListInput = document.getElementById('tension-list');
+    const tensionAdvancedToggle = document.getElementById('tension-advanced-toggle');
+    const tensionModeRadios = Array.from(document.querySelectorAll('input[name="tension-mode"]'));
+    const advancedOnlyElements = Array.from(document.querySelectorAll('.advanced-only'));
     const wireWeightInput = document.getElementById('wire-weight');
     const wireFrictionInput = document.getElementById('wire-friction');
     const chainLengthInput = document.getElementById('chain-length');
@@ -323,6 +369,29 @@
     let currentSolution = null;
     let currentConfig = null;
     let currentScenarioName = 'Custom configuration';
+    let defaultTensionMode = 'T';
+
+    updateTensionModeVisibility(false);
+
+    tensionModeRadios.forEach((radio) => {
+      radio.addEventListener('change', () => {
+        if (radio.checked) {
+          defaultTensionMode = radio.value;
+        }
+      });
+    });
+
+    tensionAdvancedToggle.addEventListener('change', () => {
+      const enabled = tensionAdvancedToggle.checked;
+      updateTensionModeVisibility(enabled);
+      if (!enabled) {
+        defaultTensionMode = 'T';
+        const totalRadio = tensionModeRadios.find((radio) => radio.value === 'T');
+        if (totalRadio) {
+          totalRadio.checked = true;
+        }
+      }
+    });
 
     tensionSelect.disabled = true;
 
@@ -357,6 +426,12 @@
       rebuildBuoyInputs(count, existing);
     });
 
+    function updateTensionModeVisibility(enabled) {
+      advancedOnlyElements.forEach((el) => {
+        el.style.display = enabled ? 'flex' : 'none';
+      });
+    }
+
     async function loadScenario(path) {
       try {
         const response = await fetch(path);
@@ -377,6 +452,14 @@
       tensionListInput.value = (config.tensionCases || [])
         .map((entry) => `${entry.mode?.toUpperCase() || 'T'}${entry.value}`)
         .join(', ');
+      const hasHorizontal = (config.tensionCases || []).some((entry) => (entry.mode || '').toUpperCase() === 'H');
+      tensionAdvancedToggle.checked = hasHorizontal;
+      updateTensionModeVisibility(hasHorizontal);
+      if (!hasHorizontal) {
+        defaultTensionMode = 'T';
+        const totalRadio = tensionModeRadios.find((radio) => radio.value === 'T');
+        if (totalRadio) totalRadio.checked = true;
+      }
       wireWeightInput.value = config.wire?.weight ?? '';
       wireFrictionInput.value = config.wire?.friction ?? '';
       chainLengthInput.value = config.chain?.length ?? '';
@@ -540,8 +623,9 @@
       if (!result || !currentConfig) return;
       const margin = 60;
       const geom = result.geometry;
-      const suspended = geom.suspended.map((pt) => ({ x: pt.x, y: currentConfig.fairleadDepth + pt.y }));
-      const seabed = geom.seabed.map((pt) => ({ x: pt.x, y: currentConfig.fairleadDepth + pt.y }));
+      const clampDepth = (value) => Math.min(Math.max(value, 0), currentConfig.waterDepth);
+      const suspended = geom.suspended.map((pt) => ({ x: pt.x, y: clampDepth(currentConfig.fairleadDepth + pt.y) }));
+      const seabed = geom.seabed.map((pt) => ({ x: pt.x, y: clampDepth(currentConfig.fairleadDepth + pt.y) }));
       const maxX = Math.max(result.anchorDistance * 1.05, 1);
       const maxY = currentConfig.waterDepth * 1.05;
       const scaleX = (canvas.width - 2 * margin) / maxX;
@@ -610,7 +694,7 @@
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      ctx.fillText('Depth (m)', 0, -12);
+      ctx.fillText('Depth below SWL (m)', 0, -12);
       ctx.restore();
       ctx.restore();
 
@@ -663,8 +747,8 @@
 
       // Buoys
       for (const buoy of result.buoyStates) {
-        const attachAbs = currentConfig.fairleadDepth + buoy.attach.y;
-        const buoyAbs = Math.max(0, currentConfig.fairleadDepth + buoy.buoyDepth);
+      const attachAbs = clampDepth(currentConfig.fairleadDepth + buoy.attach.y);
+      const buoyAbs = clampDepth(currentConfig.fairleadDepth + buoy.buoyDepth);
         const attach = toCanvas({ x: buoy.attach.x, y: attachAbs });
         const top = toCanvas({ x: buoy.attach.x, y: buoyAbs });
         ctx.strokeStyle = buoy.taut ? '#fde68a' : 'rgba(148, 163, 184, 0.5)';
@@ -680,7 +764,7 @@
       }
 
       // Fairlead point
-      const fairlead = toCanvas({ x: 0, y: currentConfig.fairleadDepth });
+      const fairlead = toCanvas({ x: 0, y: clampDepth(currentConfig.fairleadDepth) });
       ctx.fillStyle = '#22d3ee';
       ctx.beginPath();
       ctx.arc(fairlead.x, fairlead.y, 6, 0, Math.PI * 2);
@@ -778,7 +862,7 @@
     function parseTensionToken(token) {
       if (!token) return null;
       const normalised = token.replace(/\s+/g, '').toUpperCase();
-      let mode = 'T';
+      let mode = defaultTensionMode;
       let valuePart = normalised;
 
       if (valuePart.includes(':')) {

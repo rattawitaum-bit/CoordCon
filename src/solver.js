@@ -3,54 +3,44 @@ const EPS = 1e-9;
 function buildContext(config) {
   const wire = config.wire || {};
   const chain = config.chain || {};
+  const wireLength = Number.isFinite(wire.length) ? Number(wire.length) : 0;
+  const chainLength = Number.isFinite(chain.length) ? Number(chain.length) : 0;
+  if (wireLength <= 0 && chainLength <= 0) {
+    throw new Error('No suspended line; anchor dragging risk.');
+  }
+
   const segments = [];
   let cumulative = 0;
-  if (wire.length && wire.length > 0) {
+  if (wireLength > 0) {
     segments.push({
       id: 'wire',
-      length: wire.length,
+      length: wireLength,
       weight: wire.weight,
       friction: wire.friction || 0,
       start: cumulative,
-      end: cumulative + wire.length,
+      end: cumulative + wireLength,
     });
-    cumulative += wire.length;
-  } else {
-    segments.push({
-      id: 'wire',
-      length: 0,
-      weight: wire.weight || 0,
-      friction: wire.friction || 0,
-      start: cumulative,
-      end: cumulative,
-    });
+    cumulative += wireLength;
   }
-  if (chain.length && chain.length > 0) {
+  if (chainLength > 0) {
     segments.push({
       id: 'chain',
-      length: chain.length,
+      length: chainLength,
       weight: chain.weight,
       friction: chain.friction || 0,
       start: cumulative,
-      end: cumulative + chain.length,
+      end: cumulative + chainLength,
     });
-    cumulative += chain.length;
-  } else {
-    segments.push({
-      id: 'chain',
-      length: 0,
-      weight: chain.weight || 0,
-      friction: chain.friction || 0,
-      start: cumulative,
-      end: cumulative,
-    });
+    cumulative += chainLength;
   }
+
   const totalLength = cumulative;
-  const buoys = (config.buoys || []).map((b) => ({
+  const buoys = (config.buoys || []).map((b, index) => ({
     arcLength: b.arcLength,
     force: b.force,
     pennantLength: b.pennantLength || 0,
-    name: b.name || 'buoy',
+    name: b.name || `buoy-${index + 1}`,
+    surfaceFirst: b.surfaceFirst !== false,
   })).sort((a, b) => a.arcLength - b.arcLength);
 
   return {
@@ -59,6 +49,8 @@ function buildContext(config) {
     targetDepth: config.waterDepth - config.fairleadDepth, // Touchdown at y = WD - df; no sign flip.
     segments,
     totalLength,
+    wire: { length: wireLength, weight: wire.weight, friction: wire.friction || 0 },
+    chain: { length: chainLength, weight: chain.weight, friction: chain.friction || 0 },
     buoys,
   };
 }
@@ -185,41 +177,29 @@ function integrateLine({ context, H, u0, stopAtTarget }) {
 }
 
 function computeSuspended(context, arcLength) {
-  const { segments } = context;
   const suspended = { wire: 0, chain: 0 };
-  let remaining = arcLength;
-  for (const segment of segments) {
-    const len = Math.min(segment.length, Math.max(0, remaining));
-    if (segment.id === 'wire') {
-      suspended.wire = len;
-    } else if (segment.id === 'chain') {
-      suspended.chain = len;
-    }
-    remaining -= len;
+  let remaining = Math.max(0, arcLength);
+  if (context.wire.length > 0) {
+    const take = Math.min(context.wire.length, remaining);
+    suspended.wire = take;
+    remaining -= take;
+  }
+  if (context.chain.length > 0 && remaining > 0) {
+    const take = Math.min(context.chain.length, remaining);
+    suspended.chain = take;
+    remaining -= take;
   }
   return suspended;
 }
 
 function computeGrounded(context, touchdownArc) {
-  const { segments, totalLength } = context;
   const grounded = { wire: 0, chain: 0 };
-  let remaining = totalLength - touchdownArc;
-  if (remaining <= 0) {
-    return grounded;
+  const suspended = computeSuspended(context, touchdownArc);
+  if (context.wire.length > 0) {
+    grounded.wire = Math.max(0, context.wire.length - suspended.wire);
   }
-  const chainSegment = segments.find((s) => s.id === 'chain');
-  if (chainSegment) {
-    const chainSuspended = Math.max(0, Math.min(chainSegment.length, touchdownArc - chainSegment.start));
-    const chainGround = Math.max(0, chainSegment.length - chainSuspended);
-    const takeChain = Math.min(chainGround, remaining);
-    grounded.chain = takeChain;
-    remaining -= takeChain;
-  }
-  const wireSegment = segments.find((s) => s.id === 'wire');
-  if (wireSegment && remaining > 0) {
-    const wireSuspended = Math.max(0, Math.min(wireSegment.length, touchdownArc - wireSegment.start));
-    const wireGround = Math.max(0, wireSegment.length - wireSuspended);
-    grounded.wire = Math.min(wireGround, remaining);
+  if (context.chain.length > 0) {
+    grounded.chain = Math.max(0, context.chain.length - suspended.chain);
   }
   return grounded;
 }
@@ -238,60 +218,78 @@ function frictionDrop(context, grounded) {
 
 function solveTMode(context, caseDef) {
   const Tfair = caseDef.value;
-  let HHigh = Math.max(Tfair * 0.999999, Tfair - 1e-6);
-  if (HHigh <= 0) {
-    throw new Error('Horizontal tension search requires positive total tension.');
+  if (!Number.isFinite(Tfair) || Tfair <= 0) {
+    throw new Error('Total fairlead tension must be positive.');
   }
-  const evalAt = (H) => {
-    const u0 = Math.acosh(Tfair / H);
-    return { H, u0, solution: integrateLine({ context, H, u0, stopAtTarget: false }) };
-  };
-  let highEval = evalAt(HHigh);
-  let gHigh = highEval.solution.end.y - context.targetDepth;
 
-  let HLow = Math.max(1e-3, HHigh * 0.1);
-  let lowEval = evalAt(HLow);
-  let gLow = lowEval.solution.end.y - context.targetDepth;
-  let attempts = 0;
-  while (gLow <= 0 && attempts < 30) {
-    HLow *= 0.5;
-    if (HLow < 1e-6) {
-      break;
+  const evalAt = (u0) => {
+    if (!Number.isFinite(u0) || u0 <= 0) {
+      return { u0, invalid: true };
     }
-    lowEval = evalAt(HLow);
-    gLow = lowEval.solution.end.y - context.targetDepth;
-    attempts += 1;
+    const cosh = Math.cosh(u0);
+    if (!Number.isFinite(cosh) || cosh <= 1) {
+      return { u0, invalid: true };
+    }
+    const H = Tfair / cosh;
+    const solution = integrateLine({ context, H, u0, stopAtTarget: false });
+    const touchdown = solution.touchdown || null;
+    const depthErr = solution.end.y - context.targetDepth;
+    return { u0, H, touchdown, depthErr, solution };
+  };
+
+  let uLow = 1e-6;
+  let lowEval = evalAt(uLow);
+  let uHigh = 0.2;
+  let highEval = evalAt(uHigh);
+
+  let guard = 0;
+  while ((!highEval.touchdown || highEval.depthErr < 0) && guard < 80) {
+    uHigh *= 2;
+    highEval = evalAt(uHigh);
+    guard += 1;
+    if (uHigh > 50) break;
   }
-  if (gLow <= 0) {
-    throw new Error('Line cannot reach seabed with supplied total tension.');
+  if (!highEval.touchdown || highEval.depthErr < 0) {
+    throw new Error('Unable to reach seabed under supplied total tension.');
   }
 
-  if (gHigh >= 0) {
-    // Even at high H the line still touches; accept this limit.
-    return finalizeTMode(context, Tfair, HHigh);
+  guard = 0;
+  while (lowEval.touchdown && lowEval.depthErr > 0 && guard < 80) {
+    uLow *= 0.5;
+    lowEval = evalAt(uLow);
+    guard += 1;
+    if (uLow < 1e-8) break;
   }
 
   let iterations = 0;
-  let midH = HHigh;
-  while (iterations < 80 && Math.abs(HHigh - HLow) > 1e-6) {
-    midH = 0.5 * (HHigh + HLow);
-    const midEval = evalAt(midH);
-    const gMid = midEval.solution.end.y - context.targetDepth;
-    if (gMid > 0) {
-      HLow = midH;
-      lowEval = midEval;
-    } else {
-      HHigh = midH;
+  let best = highEval;
+  while (iterations < 100 && Math.abs(uHigh - uLow) > 1e-6) {
+    const midU = 0.5 * (uHigh + uLow);
+    const midEval = evalAt(midU);
+    if (!midEval.touchdown) {
+      uLow = midU;
+      iterations += 1;
+      continue;
+    }
+    best = midEval;
+    if (midEval.depthErr > 0) {
+      uHigh = midU;
       highEval = midEval;
+    } else {
+      uLow = midU;
+      lowEval = midEval;
     }
     iterations += 1;
   }
-  return finalizeTMode(context, Tfair, HHigh);
-}
 
-function finalizeTMode(context, Tfair, H) {
-  const u0 = Math.acosh(Tfair / H);
-  return finalizeCase(context, { mode: 'T', input: Tfair, H, u0 });
+  const final = best.touchdown ? best : highEval;
+  return finalizeCase(context, {
+    mode: 'T',
+    input: Tfair,
+    H: final.H,
+    u0: final.u0,
+    totalTension: Tfair,
+  });
 }
 
 function solveHMode(context, caseDef) {
@@ -359,8 +357,11 @@ function finalizeCase(context, params) {
   const H_anchor = Math.max(0, H - frictionLoss);
   const anchorDistance = touchdown.x + totalGrounded;
   const V0 = H * Math.sinh(u0);
-  const totalTension = H * Math.cosh(u0);
+  const totalTension = params.totalTension ?? H * Math.cosh(u0);
   const warnings = [];
+  if (totalGrounded <= EPS) {
+    warnings.push('No grounded length: anchor-drag risk');
+  }
   if (totalGrounded > 0 && H_anchor < 1e-3) {
     warnings.push('dragging risk');
   }
