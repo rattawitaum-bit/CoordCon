@@ -624,7 +624,18 @@
       const margin = 60;
       const geom = result.geometry;
       const clampDepth = (value) => Math.min(Math.max(value, 0), currentConfig.waterDepth);
-      const suspended = geom.suspended.map((pt) => ({ x: pt.x, y: clampDepth(currentConfig.fairleadDepth + pt.y) }));
+      const touchdownDepth = result.touchdown ? result.touchdown.y : (currentConfig.waterDepth - currentConfig.fairleadDepth);
+      const remapLocalY = (localY) => {
+        if (!Number.isFinite(touchdownDepth) || touchdownDepth <= 0) return localY;
+        const normalized = Math.min(Math.max(localY / touchdownDepth, 0), 1);
+        const eased = Math.pow(normalized, 0.55);
+        return touchdownDepth * eased;
+      };
+
+      const suspended = geom.suspended.map((pt) => ({
+        x: pt.x,
+        y: clampDepth(currentConfig.fairleadDepth + remapLocalY(pt.y)),
+      }));
       const seabed = geom.seabed.map((pt) => ({ x: pt.x, y: clampDepth(currentConfig.fairleadDepth + pt.y) }));
       const maxX = Math.max(result.anchorDistance * 1.05, 1);
       const maxY = currentConfig.waterDepth * 1.05;
