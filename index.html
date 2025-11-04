@@ -624,26 +624,27 @@
       const margin = 60;
       const geom = result.geometry;
       const clampDepth = (value) => Math.min(Math.max(value, 0), currentConfig.waterDepth);
-      const touchdownDepth = result.touchdown ? result.touchdown.y : (currentConfig.waterDepth - currentConfig.fairleadDepth);
-      const remapLocalY = (localY) => {
-        if (!Number.isFinite(touchdownDepth) || touchdownDepth <= 0) return localY;
-        const normalized = Math.min(Math.max(localY / touchdownDepth, 0), 1);
-        const eased = Math.pow(normalized, 0.55);
-        return touchdownDepth * eased;
-      };
 
       const suspended = geom.suspended.map((pt) => ({
         x: pt.x,
-        y: clampDepth(currentConfig.fairleadDepth + remapLocalY(pt.y)),
+        y: clampDepth(currentConfig.fairleadDepth + pt.y),
       }));
-      const seabed = geom.seabed.map((pt) => ({ x: pt.x, y: clampDepth(currentConfig.fairleadDepth + pt.y) }));
-      const maxX = Math.max(result.anchorDistance * 1.05, 1);
-      const maxY = currentConfig.waterDepth * 1.05;
-      const scaleX = (canvas.width - 2 * margin) / maxX;
-      const scaleY = (canvas.height - 2 * margin) / maxY;
+      const seabed = geom.seabed.map((pt) => ({
+        x: pt.x,
+        y: clampDepth(currentConfig.fairleadDepth + pt.y),
+      }));
+
+      const spanX = Math.max(result.anchorDistance * 1.05, 1);
+      const spanY = Math.max(currentConfig.waterDepth * 1.05, 1);
+      const availableWidth = canvas.width - 2 * margin;
+      const availableHeight = canvas.height - 2 * margin;
+      const scale = Math.min(availableWidth / spanX, availableHeight / spanY);
+      const offsetX = margin + (availableWidth - spanX * scale) / 2;
+      const offsetY = margin + (availableHeight - spanY * scale) / 2;
+
       const toCanvas = (pt) => ({
-        x: margin + pt.x * scaleX,
-        y: margin + pt.y * scaleY,
+        x: offsetX + pt.x * scale,
+        y: offsetY + pt.y * scale,
       });
 
       // Gridlines
@@ -654,19 +655,19 @@
       const stepX = 50;
       const stepY = 10;
 
-      for (let x = stepX; x < maxX; x += stepX) {
-        const cx = margin + x * scaleX;
+      for (let x = stepX; x < spanX; x += stepX) {
+        const cx = offsetX + x * scale;
         ctx.beginPath();
-        ctx.moveTo(cx, margin);
-        ctx.lineTo(cx, margin + maxY * scaleY);
+        ctx.moveTo(cx, offsetY);
+        ctx.lineTo(cx, offsetY + spanY * scale);
         ctx.stroke();
       }
 
-      for (let y = stepY; y < maxY; y += stepY) {
-        const cy = margin + y * scaleY;
+      for (let y = stepY; y < spanY; y += stepY) {
+        const cy = offsetY + y * scale;
         ctx.beginPath();
-        ctx.moveTo(margin, cy);
-        ctx.lineTo(margin + maxX * scaleX, cy);
+        ctx.moveTo(offsetX, cy);
+        ctx.lineTo(offsetX + spanX * scale, cy);
         ctx.stroke();
       }
       ctx.restore();
@@ -676,32 +677,32 @@
       ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
       ctx.font = '12px "Segoe UI", "Roboto", sans-serif';
 
-      const axisBottom = margin + maxY * scaleY;
+      const axisBottom = offsetY + spanY * scale;
 
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
-      for (let x = 0; x <= maxX + 1e-6; x += stepX) {
-        const cx = margin + x * scaleX;
+      for (let x = 0; x <= spanX + 1e-6; x += stepX) {
+        const cx = offsetX + x * scale;
         ctx.fillText(`${x.toFixed(0)}`, cx, axisBottom + 8);
       }
-      if ((maxX % stepX) > 1e-6) {
-        const cx = margin + maxX * scaleX;
-        ctx.fillText(`${maxX.toFixed(0)}`, cx, axisBottom + 8);
+      if ((spanX % stepX) > 1e-6) {
+        const cx = offsetX + spanX * scale;
+        ctx.fillText(`${spanX.toFixed(0)}`, cx, axisBottom + 8);
       }
-      ctx.fillText('Horizontal distance (m)', margin + (maxX * scaleX) / 2, axisBottom + 26);
+      ctx.fillText('Horizontal distance (m)', offsetX + (spanX * scale) / 2, axisBottom + 26);
 
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
-      for (let y = 0; y <= maxY + 1e-6; y += stepY) {
-        const cy = margin + y * scaleY;
-        ctx.fillText(`${y.toFixed(0)}`, margin - 10, cy);
+      for (let y = 0; y <= spanY + 1e-6; y += stepY) {
+        const cy = offsetY + y * scale;
+        ctx.fillText(`${y.toFixed(0)}`, offsetX - 10, cy);
       }
-      if ((maxY % stepY) > 1e-6) {
-        const cy = margin + maxY * scaleY;
-        ctx.fillText(`${maxY.toFixed(0)}`, margin - 10, cy);
+      if ((spanY % stepY) > 1e-6) {
+        const cy = offsetY + spanY * scale;
+        ctx.fillText(`${spanY.toFixed(0)}`, offsetX - 10, cy);
       }
       ctx.save();
-      ctx.translate(20, margin + (maxY * scaleY) / 2);
+      ctx.translate(offsetX - 40, offsetY + (spanY * scale) / 2);
       ctx.rotate(-Math.PI / 2);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
@@ -714,18 +715,18 @@
       ctx.lineWidth = 2;
       ctx.setLineDash([6, 6]);
       ctx.beginPath();
-      ctx.moveTo(margin, margin);
-      ctx.lineTo(canvas.width - margin, margin);
+      ctx.moveTo(offsetX, offsetY);
+      ctx.lineTo(offsetX + spanX * scale, offsetY);
       ctx.stroke();
 
       // Seabed
       ctx.setLineDash([]);
       ctx.strokeStyle = 'rgba(75, 85, 99, 0.7)';
       ctx.lineWidth = 3;
-      const seabedY = margin + currentConfig.waterDepth * scaleY;
+      const seabedY = offsetY + currentConfig.waterDepth * scale;
       ctx.beginPath();
-      ctx.moveTo(margin, seabedY);
-      ctx.lineTo(canvas.width - margin, seabedY);
+      ctx.moveTo(offsetX, seabedY);
+      ctx.lineTo(offsetX + spanX * scale, seabedY);
       ctx.stroke();
 
       // Suspended segment
@@ -758,8 +759,8 @@
 
       // Buoys
       for (const buoy of result.buoyStates) {
-      const attachAbs = clampDepth(currentConfig.fairleadDepth + buoy.attach.y);
-      const buoyAbs = clampDepth(currentConfig.fairleadDepth + buoy.buoyDepth);
+        const attachAbs = clampDepth(currentConfig.fairleadDepth + buoy.attach.y);
+        const buoyAbs = clampDepth(currentConfig.fairleadDepth + buoy.buoyDepth);
         const attach = toCanvas({ x: buoy.attach.x, y: attachAbs });
         const top = toCanvas({ x: buoy.attach.x, y: buoyAbs });
         ctx.strokeStyle = buoy.taut ? '#fde68a' : 'rgba(148, 163, 184, 0.5)';
