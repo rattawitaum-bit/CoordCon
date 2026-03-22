@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CoordConverter - แปลงพิกัด</title>
+    <title>GeoTools - Converter & Speedometer</title>
     
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -55,24 +55,58 @@
         input:focus, select:focus { border-color: #f59e0b; }
         
         .dark #map { filter: brightness(0.9) contrast(1.1); }
+        
+        /* Speedometer Glow */
+        .speed-glow {
+            text-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Toast Animation */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .toast {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body class="grid-bg min-h-screen flex flex-col transition-colors duration-200">
 
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
     <!-- Header -->
-    <header class="sticky top-0 z-50 bg-slate-900/90 dark:bg-slate-900/90 light:bg-white/90 backdrop-blur-sm border-b border-border transition-colors">
-        <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded bg-amber-500/20 border border-amber-500/50 flex items-center justify-center">
-                    <i data-lucide="crosshair" class="w-4 h-4 text-amber-500"></i>
-                </div>
-                <div>
-                    <h1 class="text-sm font-bold leading-none">CoordConverter</h1>
-                    <p class="text-[10px] text-slate-400 mt-0.5">WGS84 ↔ Local Datum</p>
+    <header class="sticky top-0 z-[1000] bg-slate-900/90 dark:bg-slate-900/90 light:bg-white/90 backdrop-blur-sm border-b border-border transition-colors">
+        <div class="max-w-4xl mx-auto w-full px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="relative inline-block text-left">
+                    <button onclick="toggleAppMenu()" class="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-lg">
+                        <i data-lucide="layout-grid" class="w-4 h-4 text-amber-500"></i>
+                        <span id="active-app-name" class="text-xs font-bold text-amber-500 uppercase tracking-tight">CoordConverter</span>
+                        <i data-lucide="chevron-down" class="w-3 h-3 text-amber-500"></i>
+                    </button>
+                    <div id="app-menu" class="hidden absolute left-0 mt-2 w-48 bg-slate-800 border border-border rounded-xl shadow-2xl overflow-hidden z-[2000]">
+                        <button onclick="switchApp('converter')" class="w-full px-4 py-3 text-left text-sm hover:bg-slate-700 flex items-center gap-3 border-b border-border/50 text-white">
+                            <i data-lucide="crosshair" class="w-4 h-4 text-amber-500"></i> CoordConverter
+                        </button>
+                        <button onclick="switchApp('speedometer')" class="w-full px-4 py-3 text-left text-sm hover:bg-slate-700 flex items-center gap-3 text-white">
+                            <i data-lucide="gauge" class="w-4 h-4 text-amber-500"></i> Speedometer
+                        </button>
+                    </div>
                 </div>
             </div>
+            
             <div class="flex gap-2">
-                <button onclick="getGPS()" class="p-2 text-slate-400 hover:text-amber-500 transition-colors" title="GPS">
+                <button onclick="getGPS()" id="gps-header-btn" class="p-2 text-slate-400 hover:text-amber-500 transition-colors" title="ดึงค่า GPS">
                     <i data-lucide="navigation" class="w-4 h-4"></i>
                 </button>
                 <button onclick="toggleTheme()" class="p-2 text-slate-400 hover:text-amber-500 transition-colors" title="สลับธีม">
@@ -82,9 +116,8 @@
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 max-w-lg mx-auto w-full px-4 py-6 space-y-4">
-
+    <!-- App 1: Coordinate Converter -->
+    <main id="app-converter" class="flex-1 max-w-lg mx-auto w-full px-4 py-6 space-y-4">
         <!-- Datum Selector -->
         <section class="bg-card border border-border rounded-xl p-4 shadow-sm">
             <label class="flex items-center gap-1.5 text-xs font-semibold text-slate-400 uppercase mb-2">
@@ -103,13 +136,13 @@
         <!-- Direction & Input Mode -->
         <div class="flex gap-2">
             <button onclick="swapDirection()" class="flex-1 flex items-center justify-center gap-2 bg-card border border-border rounded-lg py-2 text-xs font-semibold hover:border-amber-500 transition-colors">
-                <span id="label-from" class="text-amber-500">WGS84</span>
-                <i data-lucide="arrow-left-right" class="w-3 h-3"></i>
-                <span id="label-to">Local</span>
+                <span id="label-from" class="text-amber-500 font-bold">WGS84</span>
+                <i data-lucide="arrow-left-right" class="w-3 h-3 text-slate-400"></i>
+                <span id="label-to" class="font-bold">Local</span>
             </button>
-            <div class="flex bg-card border border-border rounded-lg overflow-hidden">
+            <div class="flex bg-card border border-border rounded-lg overflow-hidden shrink-0">
                 <button id="btn-mode-latlon" onclick="setInputMode('latlon')" class="px-4 py-2 text-xs font-bold bg-amber-500 text-slate-900 transition-colors">Lat/Lon</button>
-                <button id="btn-mode-utm" onclick="setInputMode('utm')" class="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors">UTM</button>
+                <button id="btn-mode-utm" onclick="setInputMode('utm')" class="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-transparent">UTM</button>
             </div>
         </div>
 
@@ -119,43 +152,39 @@
                 <h3 id="input-title" class="text-xs font-bold text-amber-500 uppercase flex items-center gap-1.5">
                     <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> WGS84 Input
                 </h3>
-                
-                <!-- D, DM, DMS Toggle -->
                 <div id="format-toggles" class="flex gap-1">
                     <button id="fmt-D" onclick="setFormat('D')" class="px-2 py-0.5 text-[9px] font-bold rounded bg-amber-500 text-slate-900 transition-colors">D</button>
-                    <button id="fmt-DM" onclick="setFormat('DM')" class="px-2 py-0.5 text-[9px] font-bold rounded text-slate-400 hover:text-white transition-colors">D M</button>
-                    <button id="fmt-DMS" onclick="setFormat('DMS')" class="px-2 py-0.5 text-[9px] font-bold rounded text-slate-400 hover:text-white transition-colors">DMS</button>
+                    <button id="fmt-DM" onclick="setFormat('DM')" class="px-2 py-0.5 text-[9px] font-bold rounded text-slate-400 hover:text-white transition-colors bg-transparent">D M</button>
+                    <button id="fmt-DMS" onclick="setFormat('DMS')" class="px-2 py-0.5 text-[9px] font-bold rounded text-slate-400 hover:text-white transition-colors bg-transparent">DMS</button>
                 </div>
             </div>
             
-            <!-- Lat/Lon Inputs -->
             <div id="inputs-latlon" class="grid grid-cols-2 gap-3 pt-1">
                 <div>
                     <label class="text-[10px] text-slate-400 uppercase font-medium">Latitude</label>
-                    <input type="text" id="lat" placeholder="13.756300" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1">
+                    <input type="text" id="lat" placeholder="13.756300" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1 text-white">
                 </div>
                 <div>
                     <label class="text-[10px] text-slate-400 uppercase font-medium">Longitude</label>
-                    <input type="text" id="lon" placeholder="100.501800" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1">
+                    <input type="text" id="lon" placeholder="100.501800" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1 text-white">
                 </div>
             </div>
 
-            <!-- UTM Inputs (Hidden by default) -->
             <div id="inputs-utm" class="hidden space-y-3 pt-1">
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] text-slate-400 uppercase font-medium">Easting (X)</label>
-                        <input type="number" id="easting" placeholder="662500" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1">
+                        <input type="number" id="easting" placeholder="662500" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1 text-white">
                     </div>
                     <div>
                         <label class="text-[10px] text-slate-400 uppercase font-medium">Northing (Y)</label>
-                        <input type="number" id="northing" placeholder="1521500" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1">
+                        <input type="number" id="northing" placeholder="1521500" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1 text-white">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] text-slate-400 uppercase font-medium">Zone (1-60)</label>
-                        <input type="number" id="zone" placeholder="47" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1">
+                        <input type="number" id="zone" placeholder="47" class="w-full bg-slate-900/50 border border-border rounded-md px-3 py-2 text-sm mt-1 text-white">
                     </div>
                     <div>
                         <label class="text-[10px] text-slate-400 uppercase font-medium">Hemisphere</label>
@@ -168,68 +197,137 @@
             </div>
         </section>
 
-        <!-- Convert Button -->
-        <button onclick="convert()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2">
+        <button onclick="convert()" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-bold py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
             <i data-lucide="zap" class="w-4 h-4"></i> แปลงพิกัด (Convert Coordinates)
         </button>
 
-        <!-- Map Container -->
         <div id="map-wrapper" class="hidden space-y-2 mt-2">
             <div class="flex items-center justify-between">
                 <h3 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <i data-lucide="map" class="w-3.5 h-3.5 text-amber-500"></i> Map Preview
                 </h3>
-                <!-- Street / Satellite Toggle -->
                 <div class="flex bg-slate-900 border border-border rounded-md overflow-hidden p-0.5">
-                    <button id="map-street" onclick="setMapType('street')" class="px-2.5 py-1 text-[10px] font-semibold rounded-sm bg-amber-500 text-slate-900 transition-colors">
-                        Street
-                    </button>
-                    <button id="map-satellite" onclick="setMapType('satellite')" class="px-2.5 py-1 text-[10px] font-semibold rounded-sm text-slate-400 hover:text-white bg-transparent transition-colors">
-                        Satellite
-                    </button>
+                    <button id="map-street" onclick="setMapType('street')" class="px-2.5 py-1 text-[10px] font-semibold rounded-sm bg-amber-500 text-slate-900 transition-colors">Street</button>
+                    <button id="map-satellite" onclick="setMapType('satellite')" class="px-2.5 py-1 text-[10px] font-semibold rounded-sm text-slate-400 hover:text-white bg-transparent transition-colors">Satellite</button>
                 </div>
             </div>
             <div id="map" class="w-full h-[280px] rounded-lg border border-border relative z-0"></div>
         </div>
 
-        <!-- Results Area -->
         <section id="results" class="hidden bg-card border border-amber-500/30 rounded-xl p-4 shadow-[0_0_20px_rgba(245,158,11,0.1)] space-y-4">
             <div class="flex items-center justify-between border-b border-border/50 pb-2">
                 <h3 id="output-title" class="text-[11px] font-bold text-amber-500 uppercase flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-                    Local Output
+                    <div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div> Local Output
                 </h3>
                 <button onclick="copyAllResults()" class="text-[10px] font-medium flex items-center gap-1 text-slate-400 hover:text-white transition-colors bg-slate-900/50 px-2 py-1 rounded border border-border">
                     <i data-lucide="copy" class="w-3 h-3"></i> Copy All
                 </button>
             </div>
-            
-            <div id="result-content" class="space-y-4 pt-1">
-                <!-- Results injected via JS -->
-            </div>
+            <div id="result-content" class="space-y-4 pt-1"></div>
         </section>
+    </main>
 
+    <!-- App 2: Speedometer -->
+    <main id="app-speedometer" class="hidden flex-1 max-w-4xl mx-auto w-full px-4 py-6">
+        <div class="grid lg:grid-cols-2 gap-6 items-start h-full">
+            <!-- Gauge Card -->
+            <section class="bg-card border border-border rounded-3xl p-8 shadow-2xl flex flex-col items-center justify-center relative overflow-hidden group min-h-[400px]">
+                <div class="absolute inset-0 bg-gradient-to-b from-amber-500/5 to-transparent opacity-50"></div>
+                <div class="relative z-10 flex flex-col items-center w-full">
+                    <div class="flex bg-slate-900/80 border border-border rounded-full p-1 mb-8">
+                        <button id="speed-unit-kmh" onclick="setSpeedUnit('kmh')" class="px-5 py-1.5 text-xs font-bold rounded-full bg-amber-500 text-slate-900 transition-all">KM/H</button>
+                        <button id="speed-unit-knot" onclick="setSpeedUnit('knot')" class="px-5 py-1.5 text-xs font-bold rounded-full text-slate-400 hover:text-white transition-all bg-transparent">KNOTS</button>
+                    </div>
+
+                    <div class="flex items-baseline speed-glow transition-all duration-300">
+                        <span id="display-speed" class="text-[100px] md:text-[140px] font-black leading-none tracking-tighter text-amber-500">0.0</span>
+                    </div>
+                    <span id="active-unit-label" class="text-sm font-bold text-slate-500 uppercase tracking-[0.2em] mt-4">KILOMETERS PER HOUR</span>
+                </div>
+            </section>
+
+            <!-- Stats and Controls -->
+            <div class="space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-card border border-border p-6 rounded-2xl flex flex-col items-center">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase mb-2">Heading (ทิศ)</span>
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="compass" class="w-5 h-5 text-amber-500"></i>
+                            <span id="display-heading" class="text-2xl font-bold font-mono">---°</span>
+                        </div>
+                    </div>
+                    <div class="bg-card border border-border p-6 rounded-2xl flex flex-col items-center">
+                        <span class="text-[10px] text-slate-500 font-bold uppercase mb-2">Accuracy (แม่นยำ)</span>
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="signal" class="w-5 h-5 text-amber-500"></i>
+                            <span id="display-accuracy" class="text-2xl font-bold font-mono">±0m</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-card border border-border p-6 rounded-2xl flex items-center gap-5">
+                    <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                        <i data-lucide="map-pin" class="w-6 h-6 text-amber-500"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Current Position (พิกัดปัจจุบัน)</p>
+                        <p id="display-coords" class="text-sm font-mono font-medium truncate">Waiting for GPS...</p>
+                    </div>
+                </div>
+                
+                <button onclick="toggleTracking()" id="tracking-btn" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-bold rounded-2xl py-6 flex items-center justify-center gap-4 transition-all shadow-xl">
+                    <i data-lucide="play" id="tracking-icon" class="w-6 h-6 fill-current"></i>
+                    <span id="tracking-text" class="text-lg">START MONITORING</span>
+                </button>
+
+                <div class="p-4 rounded-xl bg-slate-900/40 border border-border/50">
+                    <p class="text-[11px] text-center text-slate-500 uppercase font-medium leading-relaxed">
+                        * GPS speed accuracy depends on signal quality and hardware.<br>
+                        * Heading only updates when you are moving.
+                    </p>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- App Logic -->
     <script>
-        // Initialize Icons
-        lucide.createIcons();
+        // --- Global Utils & Toast System ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'error' ? 'bg-red-500' : 'bg-amber-500';
+            const textColor = type === 'error' ? 'text-white' : 'text-slate-900';
+            
+            toast.className = `toast ${bgClass} ${textColor} px-6 py-3 rounded-full shadow-2xl font-bold text-sm mb-3 flex items-center gap-2 pointer-events-auto`;
+            toast.innerHTML = `<i data-lucide="${type === 'error' ? 'alert-circle' : 'check'}" class="w-4 h-4"></i> ${message}`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(20px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
 
         // State variables
         let isDark = true;
+        let activeApp = 'converter';
         let direction = 'wgs84_to_local'; 
         let inputMode = 'latlon'; 
-        let coordFormat = 'D'; // 'D', 'DM', 'DMS'
-        
-        // Map States
+        let coordFormat = 'D'; 
+        let speedUnit = 'kmh';
+        let watchId = null;
+
+        // Leaflet States
         let map = null;
         let marker = null;
         let streetLayer = null;
         let satelliteLayer = null;
         let currentMapType = 'street';
-
-        let currentResultText = "";
 
         // Datum Definitions
         const WGS84 = "+proj=longlat +datum=WGS84 +no_defs";
@@ -242,7 +340,36 @@
             'etrs89': "+proj=longlat +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +no_defs"
         };
 
-        // UI Functions
+        // --- Core UI Functions ---
+        function toggleAppMenu() {
+            const menu = document.getElementById('app-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function switchApp(app) {
+            activeApp = app;
+            document.getElementById('app-menu').classList.add('hidden');
+            
+            const converter = document.getElementById('app-converter');
+            const speedometer = document.getElementById('app-speedometer');
+            const appName = document.getElementById('active-app-name');
+            const gpsBtn = document.getElementById('gps-header-btn');
+
+            if (app === 'converter') {
+                converter.classList.remove('hidden');
+                speedometer.classList.add('hidden');
+                appName.innerText = "CoordConverter";
+                gpsBtn.classList.remove('hidden');
+                stopTracking();
+            } else {
+                converter.classList.add('hidden');
+                speedometer.classList.remove('hidden');
+                appName.innerText = "Speedometer";
+                gpsBtn.classList.add('hidden');
+                startTracking();
+            }
+        }
+
         function toggleTheme() {
             isDark = !isDark;
             const html = document.documentElement;
@@ -255,438 +382,310 @@
                 html.classList.remove('dark');
                 html.classList.add('light');
                 icon.setAttribute('data-lucide', 'sun');
-                document.querySelectorAll('input, select').forEach(el => {
-                    el.classList.replace('text-white', 'text-slate-900');
-                });
             }
             lucide.createIcons();
+            if (map) {
+                document.getElementById('map').style.filter = isDark ? "brightness(0.9) contrast(1.1)" : "none";
+            }
         }
 
+        // --- Speedometer Functions ---
+        function setSpeedUnit(unit) {
+            speedUnit = unit;
+            const btnKmh = document.getElementById('speed-unit-kmh');
+            const btnKnot = document.getElementById('speed-unit-knot');
+            const label = document.getElementById('active-unit-label');
+
+            if (unit === 'kmh') {
+                btnKmh.className = "px-5 py-1.5 text-xs font-bold rounded-full bg-amber-500 text-slate-900 transition-all";
+                btnKnot.className = "px-5 py-1.5 text-xs font-bold rounded-full text-slate-400 hover:text-white transition-all bg-transparent";
+                label.innerText = "KILOMETERS PER HOUR";
+            } else {
+                btnKnot.className = "px-5 py-1.5 text-xs font-bold rounded-full bg-amber-500 text-slate-900 transition-all";
+                btnKmh.className = "px-5 py-1.5 text-xs font-bold rounded-full text-slate-400 hover:text-white transition-all bg-transparent";
+                label.innerText = "KNOTS (NAUTICAL MILES)";
+            }
+        }
+
+        function toggleTracking() {
+            if (watchId) stopTracking(); else startTracking();
+        }
+
+        function startTracking() {
+            if (watchId) return;
+            if (!navigator.geolocation) {
+                showToast("Geolocation is not supported", "error");
+                return;
+            }
+
+            const btn = document.getElementById('tracking-btn');
+            const text = document.getElementById('tracking-text');
+            const icon = document.getElementById('tracking-icon');
+
+            btn.className = "w-full bg-red-500 hover:bg-red-600 active:scale-[0.98] text-white font-bold rounded-2xl py-6 flex items-center justify-center gap-4 transition-all shadow-xl";
+            text.innerText = "STOP MONITORING";
+            icon.setAttribute('data-lucide', 'square');
+            lucide.createIcons();
+
+            watchId = navigator.geolocation.watchPosition(updateDashboard, (err) => {
+                let msg = "GPS Error";
+                if(err.code === 1) msg = "Permission Denied";
+                else if(err.code === 2) msg = "Position Unavailable";
+                else if(err.code === 3) msg = "Timeout";
+                
+                showToast(msg, "error");
+                stopTracking();
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 1000,
+                timeout: 10000
+            });
+        }
+
+        function stopTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            const btn = document.getElementById('tracking-btn');
+            const text = document.getElementById('tracking-text');
+            const icon = document.getElementById('tracking-icon');
+
+            btn.className = "w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-slate-900 font-bold rounded-2xl py-6 flex items-center justify-center gap-4 transition-all shadow-xl";
+            text.innerText = "START MONITORING";
+            icon.setAttribute('data-lucide', 'play');
+            lucide.createIcons();
+            
+            document.getElementById('display-speed').innerText = "0.0";
+            document.getElementById('display-heading').innerText = "---°";
+            document.getElementById('display-accuracy').innerText = "±0m";
+            document.getElementById('display-coords').innerText = "Monitoring stopped.";
+        }
+
+        function updateDashboard(pos) {
+            const coords = pos.coords;
+            const speedMs = coords.speed || 0;
+            let val = speedUnit === 'kmh' ? (speedMs * 3.6) : (speedMs * 1.94384);
+            
+            document.getElementById('display-speed').innerText = val.toFixed(1);
+            document.getElementById('display-heading').innerText = coords.heading != null ? Math.round(coords.heading) + "°" : "---°";
+            document.getElementById('display-accuracy').innerText = "±" + Math.round(coords.accuracy) + "m";
+            document.getElementById('display-coords').innerText = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
+        }
+
+        // --- Converter Logic ---
         function swapDirection() {
             direction = direction === 'wgs84_to_local' ? 'local_to_wgs84' : 'wgs84_to_local';
             document.getElementById('label-from').innerText = direction === 'wgs84_to_local' ? 'WGS84' : 'Local';
             document.getElementById('label-to').innerText = direction === 'wgs84_to_local' ? 'Local' : 'WGS84';
-            
             document.getElementById('input-title').innerHTML = `<i data-lucide="map-pin" class="w-3.5 h-3.5 inline"></i> ${direction === 'wgs84_to_local' ? 'WGS84 Input' : 'Local Input'}`;
             document.getElementById('output-title').innerHTML = `<div class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div> ${direction === 'wgs84_to_local' ? 'Local Output' : 'WGS84 Output'}`;
-            
             lucide.createIcons();
             clearResults();
         }
 
         function setInputMode(mode) {
             inputMode = mode;
-            const btnLatLon = document.getElementById('btn-mode-latlon');
-            const btnUtm = document.getElementById('btn-mode-utm');
-            const formatToggles = document.getElementById('format-toggles');
+            document.getElementById('inputs-latlon').classList.toggle('hidden', mode !== 'latlon');
+            document.getElementById('inputs-utm').classList.toggle('hidden', mode !== 'utm');
+            document.getElementById('format-toggles').classList.toggle('hidden', mode !== 'latlon');
             
-            if (mode === 'latlon') {
-                document.getElementById('inputs-latlon').classList.remove('hidden');
-                document.getElementById('inputs-utm').classList.add('hidden');
-                formatToggles.classList.remove('hidden');
-                
-                btnLatLon.className = "px-4 py-2 text-xs font-bold bg-amber-500 text-slate-900 transition-colors";
-                btnUtm.className = "px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-transparent";
-            } else {
-                document.getElementById('inputs-latlon').classList.add('hidden');
-                document.getElementById('inputs-utm').classList.remove('hidden');
-                formatToggles.classList.add('hidden');
-                
-                btnUtm.className = "px-4 py-2 text-xs font-bold bg-amber-500 text-slate-900 transition-colors";
-                btnLatLon.className = "px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-transparent";
-            }
+            document.getElementById('btn-mode-latlon').className = mode === 'latlon' ? "px-4 py-2 text-xs font-bold bg-amber-500 text-slate-900 transition-colors" : "px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-transparent";
+            document.getElementById('btn-mode-utm').className = mode === 'utm' ? "px-4 py-2 text-xs font-bold bg-amber-500 text-slate-900 transition-colors" : "px-4 py-2 text-xs font-bold text-slate-400 hover:text-white transition-colors bg-transparent";
             clearResults();
         }
 
         function setFormat(fmt) {
             coordFormat = fmt;
-            
-            // อัปเดต UI ของปุ่ม Toggle
             ['D', 'DM', 'DMS'].forEach(f => {
-                const btn = document.getElementById(`fmt-${f}`);
-                if (f === fmt) {
-                    btn.className = "px-2 py-0.5 text-[9px] font-bold rounded bg-amber-500 text-slate-900 transition-colors";
-                } else {
-                    btn.className = "px-2 py-0.5 text-[9px] font-bold rounded text-slate-400 hover:text-white transition-colors bg-transparent";
-                }
+                document.getElementById(`fmt-${f}`).className = f === fmt ? "px-2 py-0.5 text-[9px] font-bold rounded bg-amber-500 text-slate-900 transition-colors" : "px-2 py-0.5 text-[9px] font-bold rounded text-slate-400 hover:text-white transition-colors bg-transparent";
             });
-
-            // อัปเดตตัวอย่าง (Placeholder) ของช่องกรอกข้อมูล
-            const latInput = document.getElementById('lat');
-            const lonInput = document.getElementById('lon');
-            if (fmt === 'D') {
-                latInput.placeholder = "13.756300";
-                lonInput.placeholder = "100.501800";
-            } else if (fmt === 'DM') {
-                latInput.placeholder = "13 45.378 N";
-                lonInput.placeholder = "100 30.108 E";
-            } else {
-                latInput.placeholder = "13 45 22.68 N";
-                lonInput.placeholder = "100 30 06.48 E";
+            
+            const latIn = document.getElementById('lat');
+            const lonIn = document.getElementById('lon');
+            if (latIn.value) {
+                const pLat = parseCoordinate(latIn.value);
+                if (!isNaN(pLat)) latIn.value = formatCoord(pLat, true, fmt);
             }
-
-            // แปลงค่า Input เดิมในช่องให้อยู่ในรูปแบบใหม่ทันที
-            let isValid = false;
-            if (latInput.value) {
-                const parsedLat = parseCoordinate(latInput.value);
-                if (!isNaN(parsedLat)) {
-                    latInput.value = formatCoord(parsedLat, true, fmt);
-                    isValid = true;
-                }
+            if (lonIn.value) {
+                const pLon = parseCoordinate(lonIn.value);
+                if (!isNaN(pLon)) lonIn.value = formatCoord(pLon, false, fmt);
             }
-            if (lonInput.value) {
-                const parsedLon = parseCoordinate(lonInput.value);
-                if (!isNaN(parsedLon)) {
-                    lonInput.value = formatCoord(parsedLon, false, fmt);
-                    isValid = true;
-                }
-            }
-
-            // อัปเดตผลลัพธ์ในหน้าจอแบบเงียบๆ (ถ้าตารางผลลัพธ์ถูกแสดงอยู่)
-            const resultsSection = document.getElementById('results');
-            if (!resultsSection.classList.contains('hidden')) {
-                // ถ้าสลับ Format จะเรียก convert() แบบไม่เด้งแจ้งเตือน
-                convert(true); 
-            }
+            if (!document.getElementById('results').classList.contains('hidden')) convert(true);
         }
 
-        function clearResults() {
-            document.getElementById('results').classList.add('hidden');
-            currentResultText = "";
-        }
+        function clearResults() { document.getElementById('results').classList.add('hidden'); }
 
-        // --- Formatting & Parsing Logic ---
         function parseCoordinate(input) {
             if (!input) return NaN;
             let str = input.toString().trim().toUpperCase();
-            
-            // Extract direction letter if present
             let dirMatch = str.match(/[NSEW]$/);
             let dir = dirMatch ? dirMatch[0] : '';
-            
-            // Remove symbols
             str = str.replace(/[NSEW°'"]/g, '').trim();
-            
-            // Split by space or colon
             let parts = str.split(/[\s:]+/).filter(Boolean);
             if (parts.length === 0) return NaN;
-
             let val = parseFloat(parts[0]);
             if (parts.length > 1) val += parseFloat(parts[1]) / 60;
             if (parts.length > 2) val += parseFloat(parts[2]) / 3600;
-
             if (dir === 'S' || dir === 'W') val = -val;
             return val;
         }
 
-        function toD(dec) {
-            return dec.toFixed(6);
-        }
-
-        function toDM(dec, isLat) {
+        function formatCoord(dec, isLat, format) {
             const dir = isLat ? (dec >= 0 ? 'N' : 'S') : (dec >= 0 ? 'E' : 'W');
             const abs = Math.abs(dec);
             let d = Math.floor(abs);
-            let m = ((abs - d) * 60).toFixed(4);
-            
-            if (m === "60.0000") {
-                m = "0.0000";
-                d += 1;
+            if (format === 'D') return dec.toFixed(6);
+            if (format === 'DM') {
+                let m = ((abs - d) * 60).toFixed(4);
+                if (m === "60.0000") { m = "0.0000"; d += 1; }
+                return `${d}° ${m}' ${dir}`;
             }
-            return `${d}° ${m}' ${dir}`;
-        }
-
-        function toDMS(dec, isLat) {
-            const dir = isLat ? (dec >= 0 ? 'N' : 'S') : (dec >= 0 ? 'E' : 'W');
-            const abs = Math.abs(dec);
-            let d = Math.floor(abs);
-            let mFloat = (abs - d) * 60;
-            let m = Math.floor(mFloat);
-            let s = ((mFloat - m) * 60).toFixed(2);
-            
-            if (s === "60.00") {
-                s = "0.00";
-                m += 1;
-            }
-            if (m === 60) {
-                m = 0;
-                d += 1;
-            }
+            let mF = (abs - d) * 60;
+            let m = Math.floor(mF);
+            let s = ((mF - m) * 60).toFixed(2);
+            if (s === "60.00") { s = "0.00"; m += 1; }
+            if (m === 60) { m = 0; d += 1; }
             return `${d}° ${m}' ${s}" ${dir}`;
         }
 
-        function formatCoord(dec, isLat, format) {
-            if (format === 'D') return toD(dec);
-            if (format === 'DM') return toDM(dec, isLat);
-            if (format === 'DMS') return toDMS(dec, isLat);
-            return toD(dec);
-        }
-
-        // --- Map Functions ---
-        function initMap(lat, lon) {
-            document.getElementById('map-wrapper').classList.remove('hidden');
-            
-            if (!map) {
-                map = L.map('map').setView([lat, lon], 12);
-                
-                // Initialize both layers
-                streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap'
-                });
-                
-                satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                    attribution: 'Tiles © Esri'
-                });
-
-                // Add default layer based on currentMapType
-                if (currentMapType === 'street') {
-                    streetLayer.addTo(map);
-                } else {
-                    satelliteLayer.addTo(map);
-                }
-                
-                marker = L.marker([lat, lon]).addTo(map);
-            } else {
-                map.setView([lat, lon], 12);
-                marker.setLatLng([lat, lon]);
-            }
-            
-            // Fix map sizing issue when container becomes visible
-            setTimeout(() => map.invalidateSize(), 100);
-        }
-
-        function setMapType(type) {
-            currentMapType = type;
-            const btnStreet = document.getElementById('map-street');
-            const btnSatellite = document.getElementById('map-satellite');
-
-            if (type === 'street') {
-                btnStreet.className = "px-2.5 py-1 text-[10px] font-semibold rounded-sm bg-amber-500 text-slate-900 transition-colors";
-                btnSatellite.className = "px-2.5 py-1 text-[10px] font-semibold rounded-sm text-slate-400 hover:text-white bg-transparent transition-colors";
-                if (map) {
-                    map.removeLayer(satelliteLayer);
-                    streetLayer.addTo(map);
-                }
-            } else {
-                btnSatellite.className = "px-2.5 py-1 text-[10px] font-semibold rounded-sm bg-amber-500 text-slate-900 transition-colors";
-                btnStreet.className = "px-2.5 py-1 text-[10px] font-semibold rounded-sm text-slate-400 hover:text-white bg-transparent transition-colors";
-                if (map) {
-                    map.removeLayer(streetLayer);
-                    satelliteLayer.addTo(map);
-                }
-            }
-        }
-
-        function getGPS() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    
-                    document.getElementById('lat').value = formatCoord(lat, true, coordFormat);
-                    document.getElementById('lon').value = formatCoord(lon, false, coordFormat);
-                    
-                    if(direction !== 'wgs84_to_local') swapDirection();
-                    if(inputMode !== 'latlon') setInputMode('latlon');
-                    
-                    initMap(lat, lon);
-                    alert(`GPS Location found: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
-                }, () => {
-                    alert("ไม่สามารถดึงข้อมูลตำแหน่ง GPS ได้");
-                });
-            } else {
-                alert("เบราว์เซอร์ของคุณไม่รองรับ Geolocation");
-            }
-        }
-
-        // Helper Math Function for UTM
-        function getUtmZone(lon) {
-            return Math.floor((lon + 180) / 6) + 1;
-        }
-
-        function getWgs84UtmDef(zone, isSouth) {
-            return `+proj=utm +zone=${zone} ${isSouth ? '+south' : ''} +datum=WGS84 +units=m +no_defs`;
-        }
-
-        // UI Generator for Results (Matches React Component Design)
-        function renderResultGroup(title, items) {
-            let groupHtml = `
-                <div class="space-y-2 mb-4">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <i data-lucide="chevron-right" class="w-3 h-3 text-amber-500"></i>
-                        ${title}
-                    </p>
-                    <div class="space-y-1.5">
-            `;
-
-            items.forEach((item) => {
-                const copyVal = item.value.replace(' m', ''); // Remove 'm' unit for copying
-                currentResultText += `${item.label}: ${item.value}\n`;
-
-                groupHtml += `
-                    <div class="flex items-start justify-between gap-2 bg-background/60 rounded-md px-3 py-2.5 border border-border/50">
-                        <div class="flex-1 min-w-0">
-                            <p class="text-[10px] text-slate-400 mb-0.5 font-medium">${item.label}</p>
-                            <p class="text-sm font-semibold truncate text-white">${item.value}</p>
-                            ${item.dms ? `<p class="text-[10px] text-slate-400 mt-0.5 font-mono opacity-70">${item.dms}</p>` : ''}
-                        </div>
-                        <button onclick="copySingleResult(this, '${copyVal}')" class="flex-shrink-0 w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-colors mt-0.5" title="Copy">
-                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
-                        </button>
-                    </div>
-                `;
-            });
-
-            groupHtml += `</div></div>`;
-            return groupHtml;
-        }
-
-        // --- Core Conversion Logic ---
         function convert(silent = false) {
             try {
                 const datumKey = document.getElementById('datumSelect').value;
                 const datumName = document.getElementById('datumSelect').options[document.getElementById('datumSelect').selectedIndex].text.split('(')[0].trim();
                 let localDef = DATUM_DEFS[datumKey];
-                
-                let wgsLat, wgsLon, locLat, locLon, locEasting, locNorthing, wgsEasting, wgsNorthing, zone, isSouth;
+                let wLat, wLon, lLat, lLon, lE, lN, wE, wN, zone, isSouth;
 
-                // 1. Get Base Lat/Lon
                 if (inputMode === 'latlon') {
-                    const latVal = parseCoordinate(document.getElementById('lat').value);
-                    const lonVal = parseCoordinate(document.getElementById('lon').value);
-                    if (isNaN(latVal) || isNaN(lonVal)) throw new Error("กรุณากรอกพิกัดให้ถูกต้องตามฟอร์แมตที่เลือก");
-
+                    wLat = parseCoordinate(document.getElementById('lat').value);
+                    wLon = parseCoordinate(document.getElementById('lon').value);
+                    if (isNaN(wLat) || isNaN(wLon)) throw new Error("พิกัด Lat/Lon ไม่ถูกต้อง");
+                    
                     if (direction === 'wgs84_to_local') {
-                        wgsLat = latVal; wgsLon = lonVal;
-                        if(localDef === 'AUTO') {
-                            locLat = wgsLat; locLon = wgsLon;
-                        } else {
-                            // WGS84 to Local
-                            const res = proj4(WGS84, localDef, [wgsLon, wgsLat]);
+                        if(localDef === 'AUTO') { lLat = wLat; lLon = wLon; }
+                        else {
+                            const res = proj4(WGS84, localDef, [wLon, wLat]);
                             if (localDef.includes('+proj=utm')) {
-                                locEasting = res[0]; locNorthing = res[1];
-                                const geoRes = proj4(localDef, WGS84, [locEasting, locNorthing]); 
-                                locLat = geoRes[1]; locLon = geoRes[0];
-                            } else {
-                                locLon = res[0]; locLat = res[1];
-                            }
+                                lE = res[0]; lN = res[1];
+                                const gr = proj4(localDef, WGS84, [lE, lN]);
+                                lLat = gr[1]; lLon = gr[0];
+                            } else { lLon = res[0]; lLat = res[1]; }
                         }
                     } else {
-                        // Local to WGS84
-                        locLat = latVal; locLon = lonVal;
-                        if(localDef === 'AUTO') {
-                            wgsLat = locLat; wgsLon = locLon;
-                        } else {
-                            const res = proj4(localDef, WGS84, [locLon, locLat]);
-                            wgsLon = res[0]; wgsLat = res[1];
+                        lLat = wLat; lLon = wLon;
+                        if(localDef === 'AUTO') { wLat = lLat; wLon = lLon; }
+                        else {
+                            const res = proj4(localDef, WGS84, [lLon, lLat]);
+                            wLon = res[0]; wLat = res[1];
                         }
                     }
                 } else {
-                    // UTM Input
-                    const eVal = parseFloat(document.getElementById('easting').value);
-                    const nVal = parseFloat(document.getElementById('northing').value);
+                    const eIn = parseFloat(document.getElementById('easting').value);
+                    const nIn = parseFloat(document.getElementById('northing').value);
                     zone = parseInt(document.getElementById('zone').value);
-                    const hemi = document.getElementById('hemi').value;
-                    isSouth = hemi === 'S';
-                    
-                    if (isNaN(eVal) || isNaN(nVal) || isNaN(zone)) throw new Error("กรุณากรอกข้อมูลพิกัด UTM ให้ครบถ้วน");
+                    isSouth = document.getElementById('hemi').value === 'S';
+                    if (isNaN(eIn) || isNaN(nIn) || isNaN(zone)) throw new Error("ข้อมูล UTM ไม่ครบถ้วน");
 
+                    const wUtmDef = `+proj=utm +zone=${zone} ${isSouth?'+south':''} +datum=WGS84 +units=m +no_defs`;
                     if (direction === 'wgs84_to_local') {
-                        wgsEasting = eVal; wgsNorthing = nVal;
-                        const wgsUtmDef = getWgs84UtmDef(zone, isSouth);
-                        const resGeo = proj4(wgsUtmDef, WGS84, [wgsEasting, wgsNorthing]);
-                        wgsLon = resGeo[0]; wgsLat = resGeo[1];
-                        
+                        wE = eIn; wN = nIn;
+                        const gr = proj4(wUtmDef, WGS84, [wE, wN]);
+                        wLon = gr[0]; wLat = gr[1];
                         if(localDef !== 'AUTO') {
-                            const resLoc = proj4(WGS84, localDef, [wgsLon, wgsLat]);
-                            if (localDef.includes('+proj=utm')) {
-                                locEasting = resLoc[0]; locNorthing = resLoc[1];
-                            } else {
-                                locLon = resLoc[0]; locLat = resLoc[1];
-                            }
-                        } else {
-                            locLat = wgsLat; locLon = wgsLon;
-                        }
+                            const rl = proj4(WGS84, localDef, [wLon, wLat]);
+                            if (localDef.includes('+proj=utm')) { lE = rl[0]; lN = rl[1]; }
+                            else { lLon = rl[0]; lLat = rl[1]; }
+                        } else { lLat = wLat; lLon = wLon; }
                     } else {
-                        locEasting = eVal; locNorthing = nVal;
-                        let tempLocalUtmDef = localDef;
+                        lE = eIn; lN = nIn;
+                        let tD = localDef;
                         if (!localDef.includes('+proj=utm')) {
-                             const ellpsMatch = localDef.match(/\+ellps=\S+/) || ['+datum=WGS84'];
-                             const towgsMatch = localDef.match(/\+towgs84=[^\s]+/) || [''];
-                             tempLocalUtmDef = `+proj=utm +zone=${zone} ${isSouth?'+south':''} ${ellpsMatch[0]} ${towgsMatch[0]} +units=m +no_defs`;
+                             const el = localDef.match(/\+ellps=\S+/) || ['+datum=WGS84'];
+                             const tw = localDef.match(/\+towgs84=[^\s]+/) || [''];
+                             tD = `+proj=utm +zone=${zone} ${isSouth?'+south':''} ${el[0]} ${tw[0]} +units=m +no_defs`;
                         }
-                        const resWgs = proj4(tempLocalUtmDef, WGS84, [locEasting, locNorthing]);
-                        wgsLon = resWgs[0]; wgsLat = resWgs[1];
+                        const rw = proj4(tD, WGS84, [lE, lN]);
+                        wLon = rw[0]; wLat = rw[1];
                     }
                 }
 
-                // 2. Compute missing UTMs
-                if (!wgsEasting && wgsLat !== undefined && wgsLon !== undefined) {
-                    zone = getUtmZone(wgsLon);
-                    isSouth = wgsLat < 0;
-                    const def = getWgs84UtmDef(zone, isSouth);
-                    const res = proj4(WGS84, def, [wgsLon, wgsLat]);
-                    wgsEasting = res[0]; wgsNorthing = res[1];
+                if (wE === undefined && wLat != null) {
+                    zone = Math.floor((wLon + 180) / 6) + 1;
+                    isSouth = wLat < 0;
+                    const rw = proj4(WGS84, `+proj=utm +zone=${zone} ${isSouth?'+south':''} +datum=WGS84 +units=m +no_defs`, [wLon, wLat]);
+                    wE = rw[0]; wN = rw[1];
                 }
                 
-                // Map update
-                initMap(wgsLat, wgsLon);
-
-                // 3. Render Results
-                const resultDiv = document.getElementById('result-content');
+                initMap(wLat, wLon);
+                const resC = document.getElementById('result-content');
                 let html = '';
-                currentResultText = "";
+                let copyText = "";
+
+                const addLine = (title, items) => {
+                    html += `<div class="space-y-2 mb-4"><p class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5"><i data-lucide="chevron-right" class="w-3 h-3 text-amber-500"></i> ${title}</p><div class="space-y-1.5">`;
+                    items.forEach(i => {
+                        copyText += `${i.label}: ${i.value}\n`;
+                        html += `<div class="flex items-start justify-between gap-2 bg-background/60 rounded-md px-3 py-2.5 border border-border/50"><div class="flex-1 min-w-0"><p class="text-[10px] text-slate-400 mb-0.5 font-medium">${i.label}</p><p class="text-sm font-semibold truncate text-white">${i.value}</p>${i.sub ? `<p class="text-[10px] text-slate-400 mt-0.5 font-mono opacity-70">${i.sub}</p>` : ''}</div><button onclick="copySingleResult(this, '${i.value.replace(' m', '')}')" class="shrink-0 w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:text-amber-500"><i data-lucide="copy" class="w-4 h-4"></i></button></div>`;
+                    });
+                    html += `</div></div>`;
+                };
 
                 if (direction === 'wgs84_to_local') {
-                    if (locLat !== undefined && locLon !== undefined) {
-                        html += renderResultGroup(`${datumName} Geographic`, [
-                            { label: 'Latitude', value: formatCoord(locLat, true, coordFormat), dms: coordFormat === 'D' ? toDMS(locLat, true) : null },
-                            { label: 'Longitude', value: formatCoord(locLon, false, coordFormat), dms: coordFormat === 'D' ? toDMS(locLon, false) : null }
-                        ]);
-                    }
-                    if (locEasting !== undefined && locNorthing !== undefined) {
-                        html += renderResultGroup(`${datumName} Projected / UTM`, [
-                            { label: 'Easting (X)', value: locEasting.toFixed(3) + ' m' },
-                            { label: 'Northing (Y)', value: locNorthing.toFixed(3) + ' m' }
-                        ]);
-                    }
-                    if(localDef === 'AUTO' || wgsEasting) {
-                        html += renderResultGroup(`WGS84 UTM — Zone ${zone}${isSouth?'S':'N'} (Reference)`, [
-                            { label: 'Easting', value: wgsEasting.toFixed(3) + ' m' },
-                            { label: 'Northing', value: wgsNorthing.toFixed(3) + ' m' }
-                        ]);
-                    }
+                    if (lLat != null) addLine(`${datumName} Geographic`, [{ label: 'Latitude', value: formatCoord(lLat, true, coordFormat), sub: formatCoord(lLat, true, 'DMS') }, { label: 'Longitude', value: formatCoord(lLon, false, coordFormat), sub: formatCoord(lLon, false, 'DMS') }]);
+                    if (lE != null) addLine(`${datumName} Projected / UTM`, [{ label: 'Easting (X)', value: lE.toFixed(3) + ' m' }, { label: 'Northing (Y)', value: lN.toFixed(3) + ' m' }]);
+                    addLine(`WGS84 UTM — Zone ${zone}${isSouth?'S':'N'} (Reference)`, [{ label: 'Easting', value: wE.toFixed(3) + ' m' }, { label: 'Northing', value: wN.toFixed(3) + ' m' }]);
                 } else {
-                    html += renderResultGroup('WGS84 Geographic (EPSG:4326)', [
-                        { label: 'Latitude', value: formatCoord(wgsLat, true, coordFormat), dms: coordFormat === 'D' ? toDMS(wgsLat, true) : null },
-                        { label: 'Longitude', value: formatCoord(wgsLon, false, coordFormat), dms: coordFormat === 'D' ? toDMS(wgsLon, false) : null }
-                    ]);
-                    html += renderResultGroup(`WGS84 UTM — Zone ${zone}${isSouth?'S':'N'}`, [
-                        { label: 'Easting', value: wgsEasting.toFixed(3) + ' m' },
-                        { label: 'Northing', value: wgsNorthing.toFixed(3) + ' m' }
-                    ]);
+                    addLine('WGS84 Geographic (EPSG:4326)', [{ label: 'Latitude', value: formatCoord(wLat, true, coordFormat), sub: formatCoord(wLat, true, 'DMS') }, { label: 'Longitude', value: formatCoord(wLon, false, coordFormat), sub: formatCoord(wLon, false, 'DMS') }]);
+                    addLine(`WGS84 UTM — Zone ${zone}${isSouth?'S':'N'}`, [{ label: 'Easting', value: wE.toFixed(3) + ' m' }, { label: 'Northing', value: wN.toFixed(3) + ' m' }]);
                 }
-
-                resultDiv.innerHTML = html;
-                lucide.createIcons(); // Re-render icons for new HTML
+                
+                resC.innerHTML = html;
+                lucide.createIcons();
                 document.getElementById('results').classList.remove('hidden');
+                window.lastCopyText = copyText;
+                if(!silent) showToast("แปลงพิกัดสำเร็จ");
+            } catch (err) { if (!silent) showToast(err.message, "error"); }
+        }
 
-            } catch (err) {
-                // ถ้า silent เป็น true จะไม่แจ้งเตือน เพื่อลดความรำคาญเวลาผู้ใช้แค่กดสลับปุ่ม Format
-                if (!silent) {
-                    alert("ข้อผิดพลาด: " + err.message);
-                }
+        function initMap(lat, lon) {
+            document.getElementById('map-wrapper').classList.remove('hidden');
+            if (!map) {
+                map = L.map('map').setView([lat, lon], 12);
+                streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' });
+                satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri' });
+                if (currentMapType === 'street') streetLayer.addTo(map); else satelliteLayer.addTo(map);
+                marker = L.marker([lat, lon]).addTo(map);
+                document.getElementById('map').style.filter = isDark ? "brightness(0.9) contrast(1.1)" : "none";
+            } else { map.setView([lat, lon], 12); marker.setLatLng([lat, lon]); }
+            setTimeout(() => map.invalidateSize(), 100);
+        }
+
+        function setMapType(t) {
+            currentMapType = t;
+            document.getElementById('map-street').className = t === 'street' ? "px-2.5 py-1 text-[10px] font-semibold rounded-sm bg-amber-500 text-slate-900 transition-colors" : "px-2.5 py-1 text-[10px] font-semibold rounded-sm text-slate-400 hover:text-white bg-transparent transition-colors";
+            document.getElementById('map-satellite').className = t === 'satellite' ? "px-2.5 py-1 text-[10px] font-semibold rounded-sm bg-amber-500 text-slate-900 transition-colors" : "px-2.5 py-1 text-[10px] font-semibold rounded-sm text-slate-400 hover:text-white bg-transparent transition-colors";
+            if (map) { if (t === 'street') { map.removeLayer(satelliteLayer); streetLayer.addTo(map); } else { map.removeLayer(streetLayer); satelliteLayer.addTo(map); } }
+        }
+
+        function getGPS() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(p => {
+                    const lat = p.coords.latitude, lon = p.coords.longitude;
+                    document.getElementById('lat').value = formatCoord(lat, true, coordFormat);
+                    document.getElementById('lon').value = formatCoord(lon, false, coordFormat);
+                    if(direction !== 'wgs84_to_local') swapDirection();
+                    initMap(lat, lon);
+                    showToast("ดึงพิกัด GPS สำเร็จ");
+                }, (e) => showToast("GPS Access Denied", "error"));
             }
         }
 
-        // --- Copy Functions ---
         function copySingleResult(btn, text) {
             navigator.clipboard.writeText(text).then(() => {
                 const icon = btn.querySelector('i');
                 icon.setAttribute('data-lucide', 'check-check');
                 btn.classList.add('text-amber-500');
                 lucide.createIcons();
-                
                 setTimeout(() => {
                     icon.setAttribute('data-lucide', 'copy');
                     btn.classList.remove('text-amber-500');
@@ -696,11 +695,15 @@
         }
 
         function copyAllResults() {
-            if(!currentResultText) return;
-            navigator.clipboard.writeText(currentResultText).then(() => {
-                alert("คัดลอกผลลัพธ์ทั้งหมดเรียบร้อยแล้ว!");
-            });
+            if(window.lastCopyText) {
+                navigator.clipboard.writeText(window.lastCopyText).then(() => showToast("คัดลอกทั้งหมดแล้ว"));
+            }
         }
+
+        // Initialize on load
+        window.onload = () => {
+            lucide.createIcons();
+        };
     </script>
 </body>
 </html>
