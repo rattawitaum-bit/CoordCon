@@ -300,6 +300,8 @@
 
         function setFormat(fmt) {
             coordFormat = fmt;
+            
+            // อัปเดต UI ของปุ่ม Toggle
             ['D', 'DM', 'DMS'].forEach(f => {
                 const btn = document.getElementById(`fmt-${f}`);
                 if (f === fmt) {
@@ -309,7 +311,7 @@
                 }
             });
 
-            // Update placeholders
+            // อัปเดตตัวอย่าง (Placeholder) ของช่องกรอกข้อมูล
             const latInput = document.getElementById('lat');
             const lonInput = document.getElementById('lon');
             if (fmt === 'D') {
@@ -321,6 +323,30 @@
             } else {
                 latInput.placeholder = "13 45 22.68 N";
                 lonInput.placeholder = "100 30 06.48 E";
+            }
+
+            // แปลงค่า Input เดิมในช่องให้อยู่ในรูปแบบใหม่ทันที
+            let isValid = false;
+            if (latInput.value) {
+                const parsedLat = parseCoordinate(latInput.value);
+                if (!isNaN(parsedLat)) {
+                    latInput.value = formatCoord(parsedLat, true, fmt);
+                    isValid = true;
+                }
+            }
+            if (lonInput.value) {
+                const parsedLon = parseCoordinate(lonInput.value);
+                if (!isNaN(parsedLon)) {
+                    lonInput.value = formatCoord(parsedLon, false, fmt);
+                    isValid = true;
+                }
+            }
+
+            // อัปเดตผลลัพธ์ในหน้าจอแบบเงียบๆ (ถ้าตารางผลลัพธ์ถูกแสดงอยู่)
+            const resultsSection = document.getElementById('results');
+            if (!resultsSection.classList.contains('hidden')) {
+                // ถ้าสลับ Format จะเรียก convert() แบบไม่เด้งแจ้งเตือน
+                convert(true); 
             }
         }
 
@@ -360,18 +386,32 @@
         function toDM(dec, isLat) {
             const dir = isLat ? (dec >= 0 ? 'N' : 'S') : (dec >= 0 ? 'E' : 'W');
             const abs = Math.abs(dec);
-            const d = Math.floor(abs);
-            const m = ((abs - d) * 60).toFixed(4);
+            let d = Math.floor(abs);
+            let m = ((abs - d) * 60).toFixed(4);
+            
+            if (m === "60.0000") {
+                m = "0.0000";
+                d += 1;
+            }
             return `${d}° ${m}' ${dir}`;
         }
 
         function toDMS(dec, isLat) {
             const dir = isLat ? (dec >= 0 ? 'N' : 'S') : (dec >= 0 ? 'E' : 'W');
             const abs = Math.abs(dec);
-            const d = Math.floor(abs);
-            const mFloat = (abs - d) * 60;
-            const m = Math.floor(mFloat);
-            const s = ((mFloat - m) * 60).toFixed(2);
+            let d = Math.floor(abs);
+            let mFloat = (abs - d) * 60;
+            let m = Math.floor(mFloat);
+            let s = ((mFloat - m) * 60).toFixed(2);
+            
+            if (s === "60.00") {
+                s = "0.00";
+                m += 1;
+            }
+            if (m === 60) {
+                m = 0;
+                d += 1;
+            }
             return `${d}° ${m}' ${s}" ${dir}`;
         }
 
@@ -502,7 +542,7 @@
         }
 
         // --- Core Conversion Logic ---
-        function convert() {
+        function convert(silent = false) {
             try {
                 const datumKey = document.getElementById('datumSelect').value;
                 const datumName = document.getElementById('datumSelect').options[document.getElementById('datumSelect').selectedIndex].text.split('(')[0].trim();
@@ -632,7 +672,10 @@
                 document.getElementById('results').classList.remove('hidden');
 
             } catch (err) {
-                alert("ข้อผิดพลาด: " + err.message);
+                // ถ้า silent เป็น true จะไม่แจ้งเตือน เพื่อลดความรำคาญเวลาผู้ใช้แค่กดสลับปุ่ม Format
+                if (!silent) {
+                    alert("ข้อผิดพลาด: " + err.message);
+                }
             }
         }
 
